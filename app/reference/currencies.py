@@ -1,0 +1,30 @@
+# Most-used currencies. The full ISO list has ~180; this covers ~95% of SMEs.
+CURRENCIES = [
+    ("GBP", "British Pound (£)"),
+    ("EUR", "Euro (€)"),
+    ("USD", "US Dollar ($)"),
+    ("CAD", "Canadian Dollar"),
+    ("AUD", "Australian Dollar"),
+    ("NZD", "New Zealand Dollar"),
+    ("CHF", "Swiss Franc"),
+    ("SEK", "Swedish Krona"),
+    ("NOK", "Norwegian Krone"),
+    ("DKK", "Danish Krone"),
+    ("PLN", "Polish Zloty"),
+    ("CZK", "Czech Koruna"),
+    ("HUF", "Hungarian Forint"),
+    ("RON", "Romanian Leu"),
+    ("TRY", "Turkish Lira"),
+    ("INR", "Indian Rupee"),
+    ("SGD", "Singapore Dollar"),
+    ("HKD", "Hong Kong Dollar"),
+    ("JPY", "Japanese Yen"),
+    ("CNY", "Chinese Yuan"),
+    ("AED", "UAE Dirham"),
+    ("SAR", "Saudi Riyal"),
+    ("ZAR", "South African Rand"),
+    ("BRL", "Brazilian Real"),
+    ("MXN", "Mexican Peso"),
+]
+
+CURRENCY_CODES = {code for code, _ in CURRENCIES}

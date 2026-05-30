@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}My Insights · FinCoach{% endblock %}
+
+{% macro money(d, currency='') -%}
+  {%- if d is none -%}—{%- else -%}{{ currency }}{{ '{:,.2f}'.format(d) }}{%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>📈 My Insights</h1>
+        <p class="subtitle">
+            {% if period %}Period {{ "%04d-%02d" | format(period.year, period.month) }} · {% endif %}{{ client.base_currency }}
+        </p>
+    </div>
+    <a href="/portal" class="button ghost">← Portal</a>
+</div>
+
+{% if not period or not kpis %}
+<div class="card">
+    <h2>Numbers not ready yet</h2>
+    <p class="subtitle" style="margin:0.5rem 0 1rem">
+        Your accountant hasn't approved any transactions yet. Once they do, your numbers will appear here.
+    </p>
+    <div class="banner warning">
+        Nothing to show. Check back after your next month-end close.
+    </div>
+</div>
+{% else %}
+
+<div class="banner">
+    These numbers come directly from transactions your accountant has reviewed and approved.
+    They do not include anything still in draft.
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Revenue</div>
+        <div class="stat-value">{{ money(kpis.revenue, client.base_currency) }}</div>
+        <div class="stat-sub">Money coming in this month</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Net profit</div>
+        <div class="stat-value" style="{% if kpis.net_profit >= 0 %}color:var(--success){% else %}color:var(--danger){% endif %}">
+            {{ money(kpis.net_profit, client.base_currency) }}
+        </div>
+        <div class="stat-sub">
+            {% if kpis.net_profit >= 0 %}You made money{% else %}You spent more than you earned{% endif %}
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Gross margin</div>
+        <div class="stat-value">
+            {% if kpis.gross_margin_pct is none %}—{% else %}{{ kpis.gross_margin_pct }}%{% endif %}
+        </div>
+        <div class="stat-sub">Profit retained from each sale</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Transactions</div>
+        <div class="stat-value">{{ kpis.transaction_count }}</div>
+        <div class="stat-sub">In your books this month</div>
+    </div>
+</div>
+
+<div class="cols-2">
+    <div class="card">
+        <h2>Cash this month</h2>
+        <table class="data" style="margin-top:0.75rem">
+            <tbody>
+                <tr>
+                    <td>Money in</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--success)">+{{ money(cash.inflows, client.base_currency) }}</td>
+                </tr>
+                <tr>
+                    <td>Money out</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--danger)">−{{ money(cash.outflows, client.base_currency) }}</td>
+                </tr>
+                <tr style="background:var(--accent-soft)">
+                    <td><strong>Net change</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(cash.net_change, client.base_currency) }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Where the money went</h2>
+        {% if kpis.top_expense_lines %}
+        <table class="data" style="margin-top:0.75rem">
+            <tbody>
+            {% for line in kpis.top_expense_lines %}
+                <tr>
+                    <td>{{ line.account_name }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(line.total, client.base_currency) }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <p class="muted" style="font-size:0.78rem;margin-top:0.75rem">Top 3 expense categories.</p>
+        {% else %}<p class="muted">No categorised expenses for this period.</p>{% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:1rem">
+    <h2>Profit &amp; Loss</h2>
+    <table class="data" style="margin-top:0.75rem">
+        <tbody>
+            <tr>
+                <td>Revenue</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.revenue, client.base_currency) }}</td>
+            </tr>
+            <tr>
+                <td>Cost of sales</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums">({{ money(pl.cost_of_sales, client.base_currency) }})</td>
+            </tr>
+            <tr style="background:var(--line-soft)">
+                <td><strong>Gross profit</strong></td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(pl.gross_profit, client.base_currency) }}</strong></td>
+            </tr>
+            <tr>
+                <td>Operating expenses</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums">({{ money(pl.operating_expenses, client.base_currency) }})</td>
+            </tr>
+            <tr style="background:var(--accent-soft)">
+                <td><strong>Net profit</strong></td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(pl.net_profit, client.base_currency) }}</strong></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<p class="muted" style="font-size:0.78rem;margin-top:1rem">
+    Questions? <a href="/portal/assistant">Ask the AI Assistant</a>, or reach out to your accountant directly.
+</p>
+{% endif %}
+{% endblock %}

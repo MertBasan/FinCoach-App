@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Sign in · FinCoach{% endblock %}
+{% block content %}
+<div class="form-card auth-card-wrap">
+    <div class="brand" style="justify-content:center;margin-bottom:1rem">
+        <span class="brand-mark">FC</span>
+        <span class="brand-name" style="font-size:1.1rem">FinCoach</span>
+    </div>
+    <h1>Sign in</h1>
+    <p class="muted">Workflow automation for accountants</p>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post" action="/login">
+        <label class="field">
+            <span class="field-label">Email</span>
+            <input type="email" name="email" required autofocus>
+        </label>
+        <label class="field">
+            <span class="field-label">Password</span>
+            <input type="password" name="password" required>
+        </label>
+        <button type="submit" class="button">Sign in</button>
+    </form>
+    <p class="auth-footer">No firm yet? <a href="/register">Register your firm</a>.</p>
+</div>
+{% endblock %}

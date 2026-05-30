@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}New client · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>New client</h1>
+    <a href="/clients" class="button ghost">Cancel</a>
+</div>
+
+<div class="form-card form-card-wide" style="margin:0">
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+<form method="post" action="/clients/new">
+    <h3 style="margin-bottom:1rem">Basics</h3>
+    <div class="fields-row">
+        <label class="field">
+            <span class="field-label">Client name *</span>
+            <input type="text" name="name" required autofocus placeholder="Acme Ltd">
+        </label>
+        <label class="field">
+            <span class="field-label">Industry</span>
+            <input type="text" name="industry" placeholder="e.g. Hospitality, SaaS">
+        </label>
+    </div>
+    <div class="fields-row">
+        <label class="field">
+            <span class="field-label">Base currency *</span>
+            <select name="base_currency" required>
+                {% for code, label in currencies %}
+                <option value="{{ code }}" {% if code == 'GBP' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="field">
+            <span class="field-label">Submission deadline (day of month)</span>
+            <input type="number" name="submission_day_of_month" min="1" max="28" value="10">
+        </label>
+    </div>
+
+    <h3 style="margin:1.5rem 0 1rem">Address</h3>
+    <label class="field">
+        <span class="field-label">Address line 1</span>
+        <input type="text" name="address_line1">
+    </label>
+    <label class="field">
+        <span class="field-label">Address line 2</span>
+        <input type="text" name="address_line2">
+    </label>
+    <div class="fields-row">
+        <label class="field">
+            <span class="field-label">City</span>
+            <input type="text" name="city">
+        </label>
+        <label class="field">
+            <span class="field-label">Postcode</span>
+            <input type="text" name="postcode">
+        </label>
+    </div>
+    <label class="field">
+        <span class="field-label">Country</span>
+        <select name="country_code">
+            <option value="">— Select —</option>
+            {% for code, label in countries %}
+            <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+    </label>
+
+    <div class="row-gap" style="margin-top:1.5rem">
+        <button type="submit" class="button">Create client</button>
+        <a href="/clients" class="button ghost">Cancel</a>
+    </div>
+</form>
+</div>
+{% endblock %}

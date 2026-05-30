@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}{{ client.name }} · Client Portal{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Welcome, {{ user.name.split()[0] }}</h1>
+        <p class="subtitle">{{ client.name }} · Period {{ current_period }}</p>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Tasks this month</div>
+        <div class="stat-value">{{ done }}/{{ total }}</div>
+        <div class="progress" style="margin-top:0.5rem"><div class="bar" style="width: {{ pct }}%"></div></div>
+        <div class="stat-sub">{{ pct }}% complete</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Next deadline</div>
+        {% if next_deadline %}
+            <div class="stat-value" style="font-size:1.1rem">{{ next_deadline.name }}</div>
+            <div class="stat-sub">
+                {{ next_deadline.due_date.strftime('%d %b') }}
+                ({{ (next_deadline.due_date - today).days }} day{{ '' if (next_deadline.due_date - today).days == 1 else 's' }})
+            </div>
+        {% else %}
+            <div class="stat-value">—</div>
+            <div class="stat-sub good">Nothing pending</div>
+        {% endif %}
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Documents</div>
+        <div class="stat-value">{{ docs | length }}</div>
+        <div class="stat-sub">Shared with you</div>
+    </div>
+</div>
+
+<div class="cols-2">
+    <div class="card">
+        <h2>Your accountant's progress this month</h2>
+        {% if tasks %}
+        <table class="data" style="margin-top:0.75rem">
+            <thead><tr><th>Task</th><th>Due</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for t in tasks %}
+            <tr>
+                <td>{{ t.name }}</td>
+                <td>{{ t.due_date.strftime('%d %b') }}</td>
+                <td>
+                    {% if t.status != 'done' and t.due_date < today %}
+                        <span class="badge overdue">overdue</span>
+                    {% else %}
+                        <span class="badge {{ t.status }}">{{ t.status | replace('_', ' ') }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <p class="muted" style="font-size:0.78rem;margin-top:0.75rem">
+            If something here is marked overdue and important to you, please reach out to your accountant.
+        </p>
+        {% else %}
+        <p class="muted">No tasks scheduled this month yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Documents shared with you</h2>
+        {% if docs %}
+        <table class="data" style="margin-top:0.75rem">
+            <tbody>
+            {% for d in docs %}
+            <tr>
+                <td><a href="/documents/{{ d.id }}/download">{{ d.name }}</a></td>
+                <td>{{ d.document_type | replace('_', ' ') | title }}</td>
+                <td class="muted">{{ d.created_at.strftime('%d %b %Y') }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            No documents have been shared yet.
+            <div class="muted" style="margin-top:0.5rem;font-size:0.85rem">
+                When your accountant marks a document as visible, you'll see it here.
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:1rem">
+    <h2>💬 Need to make a decision?</h2>
+    <p class="subtitle">Ask the FinCoach AI Assistant for plain-English explanations of your numbers. It works with what your accountant has prepared.</p>
+    <a href="/portal/assistant" class="button" style="margin-top:0.5rem">Open AI Assistant</a>
+</div>
+{% endblock %}

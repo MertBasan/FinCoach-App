@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Reports · {{ client.name }} · FinCoach{% endblock %}
+
+{% macro money(d, currency='') -%}
+  {%- if d is none -%}—{%- else -%}{{ currency }}{{ '{:,.2f}'.format(d) }}{%- endif -%}
+{%- endmacro %}
+
+{% macro delta(curr, prior) -%}
+  {%- if prior is none -%}
+    <span class="muted" style="font-size:0.78rem">no prior</span>
+  {%- elif prior == 0 -%}
+    <span class="muted" style="font-size:0.78rem">prior was 0</span>
+  {%- else -%}
+    {%- set pct = ((curr - prior) / prior * 100) -%}
+    {%- if pct > 0 -%}
+      <span style="color:var(--success);font-size:0.78rem">+{{ '{:.1f}'.format(pct) }}%</span>
+    {%- elif pct < 0 -%}
+      <span style="color:var(--danger);font-size:0.78rem">{{ '{:.1f}'.format(pct) }}%</span>
+    {%- else -%}
+      <span class="muted" style="font-size:0.78rem">0.0%</span>
+    {%- endif -%}
+  {%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Reports</h1>
+        <p class="subtitle">
+            <a href="/clients/{{ client.id }}">{{ client.name }}</a>
+            {% if current_period %} · Period {{ "%04d-%02d" | format(current_period.year, current_period.month) }}
+              · {{ client.base_currency }}{% endif %}
+        </p>
+    </div>
+    <div class="row-gap">
+        {% if all_periods %}
+        <form method="get" action="/clients/{{ client.id }}/reports" class="task-status-form">
+            <select name="period" onchange="this.form.submit()">
+                {% for p in all_periods %}
+                {% set ps = "%04d-%02d" | format(p.year, p.month) %}
+                <option value="{{ ps }}" {% if current_period and current_period.id == p.id %}selected{% endif %}>{{ ps }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+        <a href="/clients/{{ client.id }}/transactions" class="button ghost">Review transactions</a>
+    </div>
+</div>
+
+{% if not current_period or not pl %}
+<div class="empty-state">
+    No reportable data yet.
+    <div style="margin-top:0.75rem">
+        Run a <a href="/services/pdf-extraction">bank statement extraction</a>, then approve transactions on
+        <a href="/clients/{{ client.id }}/transactions">the review page</a>.
+    </div>
+</div>
+{% else %}
+
+<div class="banner">
+    All figures are computed from <strong>approved transactions only</strong>.
+    {% if kpis.uncategorised_pct > 0 %}
+        {{ kpis.uncategorised_pct }}% of approved rows are uncategorised — code them on the review page for sharper breakdowns.
+    {% endif %}
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Revenue</div>
+        <div class="stat-value">{{ money(pl.current.revenue, client.base_currency) }}</div>
+        <div class="stat-sub">
+            vs prior {{ delta(pl.current.revenue, pl.prior_period.revenue if pl.prior_period else none) }}
+            · vs YoY {{ delta(pl.current.revenue, pl.prior_year.revenue if pl.prior_year else none) }}
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Net profit</div>
+        <div class="stat-value" style="{% if pl.current.net_profit >= 0 %}color:var(--success){% else %}color:var(--danger){% endif %}">
+            {{ money(pl.current.net_profit, client.base_currency) }}
+        </div>
+        <div class="stat-sub">
+            vs prior {{ delta(pl.current.net_profit, pl.prior_period.net_profit if pl.prior_period else none) }}
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Gross margin</div>
+        <div class="stat-value">
+            {% if kpis.gross_margin_pct is none %}—{% else %}{{ kpis.gross_margin_pct }}%{% endif %}
+        </div>
+        <div class="stat-sub">Gross profit ÷ revenue</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Approved transactions</div>
+        <div class="stat-value">{{ kpis.transaction_count }}</div>
+        <div class="stat-sub">{{ kpis.uncategorised_pct }}% uncategorised</div>
+    </div>
+</div>
+
+<div class="cols-2">
+    <div class="card">
+        <h2>Profit &amp; Loss — {{ pl.current.period_label }}</h2>
+        <table class="data" style="margin-top:0.75rem">
+            <thead>
+                <tr>
+                    <th>Line</th>
+                    <th style="text-align:right">Current</th>
+                    <th style="text-align:right">Prior period</th>
+                    <th style="text-align:right">Prior year</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Revenue</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.current.revenue) }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_period.revenue if pl.prior_period else none) }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_year.revenue if pl.prior_year else none) }}</td>
+                </tr>
+                <tr>
+                    <td>Cost of sales</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">({{ money(pl.current.cost_of_sales) }})</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{% if pl.prior_period %}({{ money(pl.prior_period.cost_of_sales) }}){% else %}—{% endif %}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{% if pl.prior_year %}({{ money(pl.prior_year.cost_of_sales) }}){% else %}—{% endif %}</td>
+                </tr>
+                <tr style="background:var(--line-soft)">
+                    <td><strong>Gross profit</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(pl.current.gross_profit) }}</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_period.gross_profit if pl.prior_period else none) }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_year.gross_profit if pl.prior_year else none) }}</td>
+                </tr>
+                <tr>
+                    <td>Operating expenses</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">({{ money(pl.current.operating_expenses) }})</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{% if pl.prior_period %}({{ money(pl.prior_period.operating_expenses) }}){% else %}—{% endif %}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{% if pl.prior_year %}({{ money(pl.prior_year.operating_expenses) }}){% else %}—{% endif %}</td>
+                </tr>
+                <tr style="background:var(--accent-soft)">
+                    <td><strong>Net profit</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(pl.current.net_profit) }}</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_period.net_profit if pl.prior_period else none) }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_year.net_profit if pl.prior_year else none) }}</td>
+                </tr>
+            </tbody>
+        </table>
+        {% if pl.current.uncategorised_count > 0 %}
+        <p class="muted" style="font-size:0.78rem;margin-top:0.75rem">
+            ⚠ {{ pl.current.uncategorised_count }} approved transaction(s) have no account assigned and are excluded from this P&amp;L.
+            Code them on the <a href="/clients/{{ client.id }}/transactions">review page</a>.
+        </p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Cash flow — {{ cash.period_label }}</h2>
+        <table class="data" style="margin-top:0.75rem">
+            <tbody>
+                <tr>
+                    <td>Inflows</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--success)">+{{ money(cash.inflows) }}</td>
+                </tr>
+                <tr>
+                    <td>Outflows</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--danger)">−{{ money(cash.outflows) }}</td>
+                </tr>
+                <tr style="background:var(--accent-soft)">
+                    <td><strong>Net change</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(cash.net_change) }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        <h3 style="margin-top:1.5rem">Top expense categories</h3>
+        {% if kpis.top_expense_lines %}
+        <table class="data" style="margin-top:0.5rem">
+            <tbody>
+            {% for line in kpis.top_expense_lines %}
+                <tr>
+                    <td><span class="muted" style="font-size:0.8rem">{{ line.account_code }}</span> {{ line.account_name }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(line.total) }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="muted">No categorised expenses yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:1rem">
+    <h2>Revenue &amp; expense breakdown</h2>
+    <div class="cols-2" style="margin-top:0.75rem;margin-bottom:0">
+        <div>
+            <h3>Revenue by account</h3>
+            {% if pl.current.revenue_lines %}
+            <table class="data">
+                <tbody>
+                {% for line in pl.current.revenue_lines %}
+                <tr>
+                    <td><span class="muted" style="font-size:0.8rem">{{ line.account_code }}</span> {{ line.account_name }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(line.total) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}<p class="muted">No income transactions in this period.</p>{% endif %}
+        </div>
+        <div>
+            <h3>Operating expenses by account</h3>
+            {% if pl.current.opex_lines %}
+            <table class="data">
+                <tbody>
+                {% for line in pl.current.opex_lines %}
+                <tr>
+                    <td><span class="muted" style="font-size:0.8rem">{{ line.account_code }}</span> {{ line.account_name }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(line.total) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}<p class="muted">No coded operating expenses in this period.</p>{% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

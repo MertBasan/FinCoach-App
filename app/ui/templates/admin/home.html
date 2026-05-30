@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Admin · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>🛡️ Platform admin</h1>
+        <p class="subtitle">All firms on FinCoach</p>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Total firms</div>
+        <div class="stat-value">{{ total_firms }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Total users</div>
+        <div class="stat-value">{{ total_users }}</div>
+    </div>
+</div>
+
+<div class="card" style="padding:0">
+{% if firm_summaries %}
+<table class="data">
+    <thead>
+        <tr><th>Firm</th><th>Clients</th><th>Users</th><th>Created</th></tr>
+    </thead>
+    <tbody>
+    {% for s in firm_summaries %}
+        <tr>
+            <td><strong>{{ s.firm.name }}</strong></td>
+            <td>{{ s.clients }}</td>
+            <td>{{ s.users }}</td>
+            <td class="muted">{{ s.firm.created_at.strftime('%d %b %Y') }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">No firms registered yet.</div>
+{% endif %}
+</div>
+{% endblock %}

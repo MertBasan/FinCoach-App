@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Review transactions · {{ client.name }} · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Review transactions</h1>
+        <p class="subtitle">
+            <a href="/clients/{{ client.id }}">{{ client.name }}</a>
+            {% if current_period %} · Period {{ "%04d-%02d" | format(current_period.year, current_period.month) }}{% endif %}
+        </p>
+    </div>
+    <div class="row-gap">
+        {% if all_periods %}
+        <form method="get" action="/clients/{{ client.id }}/transactions" class="task-status-form">
+            <select name="period" onchange="this.form.submit()">
+                {% for p in all_periods %}
+                {% set ps = "%04d-%02d" | format(p.year, p.month) %}
+                <option value="{{ ps }}" {% if current_period and current_period.id == p.id %}selected{% endif %}>{{ ps }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+        <a href="/clients/{{ client.id }}/reports" class="button ghost">View reports</a>
+        <a href="/services/pdf-extraction" class="button">+ Extract more</a>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Pending</div>
+        <div class="stat-value">{{ pending_count }}</div>
+        <div class="stat-sub {% if pending_count > 0 %}bad{% else %}good{% endif %}">
+            {% if pending_count == 0 %}All reviewed{% else %}Awaiting approval{% endif %}
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Approved</div>
+        <div class="stat-value">{{ approved_count }}</div>
+        <div class="stat-sub good">Flowing into reports</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Total this period</div>
+        <div class="stat-value">{{ transactions | length }}</div>
+        <div class="stat-sub">Across all sources</div>
+    </div>
+</div>
+
+{% if not current_period %}
+<div class="empty-state">
+    No periods exist yet for {{ client.name }}.
+    <div style="margin-top:0.75rem">
+        Run a <a href="/services/pdf-extraction">bank statement extraction</a> to populate transactions.
+    </div>
+</div>
+{% elif not transactions %}
+<div class="empty-state">
+    No transactions in this period.
+    <div style="margin-top:0.75rem">
+        Run a <a href="/services/pdf-extraction">bank statement extraction</a> for this client.
+    </div>
+</div>
+{% else %}
+
+<div class="banner">
+    Numbers are computed from raw bank-statement rows. Edit, code to an account, and approve.
+    Only <strong>approved</strong> rows appear in reports and KPIs.
+</div>
+
+<form method="post" action="/clients/{{ client.id }}/transactions/bulk-approve" id="bulkForm">
+    <input type="hidden" name="period" value="{{ "%04d-%02d" | format(current_period.year, current_period.month) }}">
+
+    <div class="card" style="padding:0;margin-top:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem 1rem;border-bottom:1px solid var(--line)">
+            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem">
+                <input type="checkbox" id="selectAll" onclick="toggleAll(this)">
+                Select all pending
+            </label>
+            <button type="submit" class="button">Approve selected</button>
+        </div>
+        <table class="data">
+            <thead>
+                <tr>
+                    <th style="width:32px"></th>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Account</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for t in transactions %}
+                <tr class="task-row {% if t.approval_status == 'approved' %}{% else %}{% endif %}">
+                    <td>
+                        {% if t.approval_status != 'approved' %}
+                        <input type="checkbox" name="tx_id" value="{{ t.id }}" class="rowcheck">
+                        {% endif %}
+                    </td>
+                    <td>{{ t.date.strftime('%d %b %Y') }}</td>
+                    <td style="font-size:0.85rem">
+                        <form method="post" action="/clients/{{ client.id }}/transactions/{{ t.id }}/update" style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;margin:0">
+                            <input type="text" name="description" value="{{ t.description }}" style="flex:1;min-width:180px;padding:0.3rem;font-size:0.82rem">
+                            <input type="number" step="0.01" name="amount" value="{{ '{:.2f}'.format(t.amount) }}" style="width:110px;padding:0.3rem;font-size:0.82rem">
+                            <select name="account_id" style="width:180px;padding:0.3rem;font-size:0.82rem">
+                                <option value="">— uncategorised —</option>
+                                {% for a in accounts %}
+                                <option value="{{ a.id }}" {% if t.account_id == a.id %}selected{% endif %}>{{ a.code }} {{ a.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="button ghost sm" title="Save edits">Save</button>
+                        </form>
+                    </td>
+                    <td style="font-variant-numeric: tabular-nums; text-align:right; {% if t.amount < 0 %}color:var(--danger){% else %}color:var(--success){% endif %}">
+                        {{ '{:+,.2f}'.format(t.amount) }}
+                    </td>
+                    <td>
+                        {% if t.account %}
+                            <span class="muted" style="font-size:0.8rem">{{ t.account.code }}</span> {{ t.account.name }}
+                        {% else %}
+                            <span class="badge pending">uncategorised</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if t.approval_status == 'approved' %}
+                            <span class="badge done">approved</span>
+                        {% elif t.approval_status == 'ai_suggested' %}
+                            <span class="badge in_progress">ai suggested</span>
+                        {% else %}
+                            <span class="badge pending">pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if t.approval_status == 'approved' %}
+                        <form method="post" action="/clients/{{ client.id }}/transactions/{{ t.id }}/unapprove" style="margin:0">
+                            <button type="submit" class="button ghost sm">Unapprove</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="/clients/{{ client.id }}/transactions/{{ t.id }}/approve" style="margin:0">
+                            <button type="submit" class="button sm">Approve</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</form>
+
+<script>
+function toggleAll(master) {
+    document.querySelectorAll('.rowcheck').forEach(cb => { cb.checked = master.checked; });
+}
+</script>
+{% endif %}
+{% endblock %}

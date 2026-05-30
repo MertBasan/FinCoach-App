@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Documents · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Documents</h1>
+        <p class="subtitle">
+            {% if selected_client %}For {{ selected_client.name }}{% else %}All clients{% endif %}
+        </p>
+    </div>
+    <form method="get" action="/documents" class="task-status-form">
+        <select name="client_id" onchange="this.form.submit()">
+            <option value="">All clients</option>
+            {% for c in clients %}
+            <option value="{{ c.id }}" {% if selected_client and selected_client.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="cols-2-13">
+    <div class="card">
+        <h2>Upload document</h2>
+        <form method="post" action="/documents/upload" enctype="multipart/form-data" style="margin-top:0.75rem">
+            <label class="field">
+                <span class="field-label">Client *</span>
+                <select name="client_id" required>
+                    <option value="">— Select client —</option>
+                    {% for c in clients %}
+                    <option value="{{ c.id }}" {% if selected_client and selected_client.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Document type</span>
+                <select name="document_type">
+                    {% for t in document_types %}
+                    <option value="{{ t }}">{{ t | replace('_', ' ') | title }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Period (YYYY-MM, optional)</span>
+                <input type="text" name="period" placeholder="2026-05">
+            </label>
+            <label class="field">
+                <span class="field-label">File *</span>
+                <input type="file" name="file" required>
+            </label>
+            <label class="checkbox-field">
+                <input type="checkbox" name="visible_to_client" value="1">
+                Visible to client portal
+            </label>
+            <button type="submit" class="button">Upload</button>
+        </form>
+    </div>
+
+    <div class="card" style="padding:0">
+        <div style="padding:1.25rem 1.25rem 0">
+            <h2>{{ documents | length }} document{{ '' if documents|length == 1 else 's' }}</h2>
+        </div>
+        {% if documents %}
+        <table class="data" style="margin-top:0.75rem">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Client</th>
+                    <th>Type</th>
+                    <th>Period</th>
+                    <th>Size</th>
+                    <th>Client visible</th>
+                    <th>Uploaded</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for d in documents %}
+                <tr>
+                    <td><a href="/documents/{{ d.id }}/download">{{ d.name }}</a></td>
+                    <td>{{ d.client.name }}</td>
+                    <td>{{ d.document_type | replace('_', ' ') | title }}</td>
+                    <td>{{ d.period or '—' }}</td>
+                    <td>{{ (d.size_bytes / 1024) | round(1) }} KB</td>
+                    <td>
+                        <form method="post" action="/documents/{{ d.id }}/toggle-visibility" style="margin:0">
+                            <button type="submit" class="button ghost sm">
+                                {% if d.visible_to_client %}<span class="badge done">Visible</span>{% else %}<span class="badge pending">Hidden</span>{% endif %}
+                            </button>
+                        </form>
+                    </td>
+                    <td class="muted">{{ d.created_at.strftime('%d %b') }}</td>
+                    <td>
+                        <form method="post" action="/documents/{{ d.id }}/delete" style="margin:0">
+                            <button type="submit" class="button ghost sm">×</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state" style="border:none">No documents yet.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

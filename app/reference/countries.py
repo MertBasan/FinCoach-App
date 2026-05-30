@@ -1,0 +1,43 @@
+# ISO 3166-1 alpha-2 codes with names. Curated list of countries with
+# meaningful SME populations. Add more as needed.
+COUNTRIES = [
+    ("GB", "United Kingdom"),
+    ("US", "United States"),
+    ("IE", "Ireland"),
+    ("CA", "Canada"),
+    ("AU", "Australia"),
+    ("NZ", "New Zealand"),
+    ("DE", "Germany"),
+    ("FR", "France"),
+    ("ES", "Spain"),
+    ("IT", "Italy"),
+    ("NL", "Netherlands"),
+    ("BE", "Belgium"),
+    ("LU", "Luxembourg"),
+    ("PT", "Portugal"),
+    ("AT", "Austria"),
+    ("CH", "Switzerland"),
+    ("SE", "Sweden"),
+    ("NO", "Norway"),
+    ("DK", "Denmark"),
+    ("FI", "Finland"),
+    ("PL", "Poland"),
+    ("CZ", "Czech Republic"),
+    ("HU", "Hungary"),
+    ("RO", "Romania"),
+    ("GR", "Greece"),
+    ("TR", "Turkey"),
+    ("IN", "India"),
+    ("SG", "Singapore"),
+    ("HK", "Hong Kong"),
+    ("JP", "Japan"),
+    ("CN", "China"),
+    ("AE", "United Arab Emirates"),
+    ("SA", "Saudi Arabia"),
+    ("ZA", "South Africa"),
+    ("BR", "Brazil"),
+    ("MX", "Mexico"),
+]
+
+COUNTRY_CODES = {c for c, _ in COUNTRIES}
+COUNTRY_NAMES = dict(COUNTRIES)

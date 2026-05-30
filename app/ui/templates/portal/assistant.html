@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}AI Assistant · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>💬 AI Assistant</h1>
+    <a href="/portal" class="button ghost">← Portal</a>
+</div>
+<div class="card">
+    <h2>Ask about your business</h2>
+    <p class="subtitle" style="margin:0.5rem 0 1rem">
+        The FinCoach assistant answers in plain English, only using figures your accountant has approved.
+        It will not invent numbers or speculate beyond what's been confirmed.
+    </p>
+    <div class="banner warning">
+        <strong>Coming soon.</strong> The AI assistant becomes available once the KPI engine and approval flow
+        are live (planned for the upcoming releases). For now, you can preview what it will look like below.
+    </div>
+
+    <div style="margin-top:1.5rem;border:1px solid var(--line);border-radius:var(--radius);padding:1rem;background:var(--line-soft)">
+        <div style="margin-bottom:0.75rem">
+            <strong>You:</strong> How did we do last month vs the previous month?
+        </div>
+        <div>
+            <strong>FinCoach AI:</strong> <em>Based on your accountant-approved numbers</em>, revenue was up
+            on the prior month. The biggest contributing category was repeat customer sales. Expenses were
+            broadly flat. Your accountant has flagged one note about a higher-than-usual software subscription
+            charge — it's worth confirming this is expected.
+        </div>
+        <p class="muted" style="font-size:0.78rem;margin-top:0.75rem">
+            ⚠️ This is a preview. Real answers will reference your actual approved numbers.
+        </p>
+    </div>
+
+    <h3 style="margin-top:1.5rem">Examples of what you'll be able to ask</h3>
+    <ul style="line-height:1.8;font-size:0.9rem">
+        <li>"How is cash flow this quarter?"</li>
+        <li>"Which customer owes us the most?"</li>
+        <li>"Is my VAT bill higher than last quarter?"</li>
+        <li>"What did my accountant note about last month?"</li>
+    </ul>
+</div>
+{% endblock %}

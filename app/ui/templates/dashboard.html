@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Good day, {{ user.name.split()[0] }}</h1>
+        <p class="subtitle">Period {{ period }} · {{ today.strftime('%A, %d %B %Y') }}</p>
+    </div>
+    <div class="row-gap">
+        <a href="/clients/new" class="button">+ New client</a>
+        <a href="/tasks" class="button ghost">View task board</a>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Active clients</div>
+        <div class="stat-value">{{ total_clients }}</div>
+        <div class="stat-sub">{{ user.firm.name }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Tasks this month</div>
+        <div class="stat-value">{{ done_tasks }}/{{ total_tasks }}</div>
+        <div class="progress" style="margin-top:0.5rem">
+            <div class="bar" style="width: {{ pct }}%"></div>
+        </div>
+        <div class="stat-sub">{{ pct }}% complete</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Overdue</div>
+        <div class="stat-value">{{ overdue_tasks }}</div>
+        <div class="stat-sub {% if overdue_tasks > 0 %}bad{% else %}good{% endif %}">
+            {% if overdue_tasks == 0 %}All on track{% else %}Need attention{% endif %}
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Upcoming this week</div>
+        <div class="stat-value">{{ upcoming | length }}</div>
+        <div class="stat-sub">Tasks due in next 7 days</div>
+    </div>
+</div>
+
+<div class="cols-2">
+    <div class="card">
+        <h2>Task completion by client</h2>
+        <div class="chart-wrap"><canvas id="clientChart"></canvas></div>
+    </div>
+    <div class="card">
+        <h2>Status breakdown</h2>
+        <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+    </div>
+</div>
+
+<div class="cols-2-13">
+    <div class="card">
+        <h2>Upcoming this week</h2>
+        {% if upcoming %}
+        <ul style="list-style:none;padding:0;margin:0.75rem 0 0">
+            {% for t in upcoming %}
+            <li style="padding:0.5rem 0;border-bottom:1px solid var(--line-soft);font-size:0.85rem">
+                <div style="font-weight:500">{{ t.name }}</div>
+                <div class="muted" style="font-size:0.78rem">
+                    {{ client_by_id[t.client_id].name }} ·
+                    Due {{ t.due_date.strftime('%a %d %b') }}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="muted" style="margin-top:0.75rem">No tasks due this week. Nicely done.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="row-between">
+            <h2>Recent activity</h2>
+            <div class="row-gap">
+                <a href="/documents" class="muted" style="font-size:0.85rem">All documents →</a>
+                <a href="/notes" class="muted" style="font-size:0.85rem">All notes →</a>
+            </div>
+        </div>
+        <div class="cols-2" style="margin-top:0.75rem;margin-bottom:0">
+            <div>
+                <h3 class="card-title">Recent documents</h3>
+                {% if recent_docs %}
+                <ul style="list-style:none;padding:0;margin:0">
+                {% for d in recent_docs %}
+                    <li style="padding:0.5rem 0;border-bottom:1px solid var(--line-soft);font-size:0.85rem">
+                        <a href="/documents?client_id={{ d.client_id }}">{{ d.name }}</a>
+                        <div class="muted" style="font-size:0.75rem">
+                            {{ d.document_type | replace('_', ' ') }} ·
+                            {{ d.created_at.strftime('%d %b') }}
+                        </div>
+                    </li>
+                {% endfor %}
+                </ul>
+                {% else %}<p class="muted" style="font-size:0.85rem">No documents yet</p>{% endif %}
+            </div>
+            <div>
+                <h3 class="card-title">Recent notes</h3>
+                {% if recent_notes %}
+                <ul style="list-style:none;padding:0;margin:0">
+                {% for n in recent_notes %}
+                    <li style="padding:0.5rem 0;border-bottom:1px solid var(--line-soft);font-size:0.85rem">
+                        <strong>{{ n.title }}</strong>
+                        <div class="muted" style="font-size:0.75rem">{{ n.updated_at.strftime('%d %b') }}</div>
+                    </li>
+                {% endfor %}
+                </ul>
+                {% else %}<p class="muted" style="font-size:0.85rem">No notes yet</p>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const clientData = {{ chart_data_json | safe }};
+    const statusData = {{ status_data_json | safe }};
+
+    function init() {
+        if (typeof Chart === 'undefined') { setTimeout(init, 50); return; }
+        const c1 = document.getElementById('clientChart');
+        const c2 = document.getElementById('statusChart');
+        if (c1) new Chart(c1, {
+            type: 'bar',
+            data: {
+                labels: clientData.labels,
+                datasets: [
+                    { label: 'Done', data: clientData.done, backgroundColor: '#16a34a' },
+                    { label: 'Remaining', data: clientData.total.map((t,i) => t - clientData.done[i]), backgroundColor: '#dbeafe' }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { x: { stacked: true }, y: { stacked: true, ticks: { precision: 0 } } },
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+            }
+        });
+        if (c2) new Chart(c2, {
+            type: 'doughnut',
+            data: {
+                labels: statusData.labels,
+                datasets: [{
+                    data: statusData.values,
+                    backgroundColor: ['#16a34a', '#ca8a04', '#94a3b8', '#dc2626'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+                cutout: '60%'
+            }
+        });
+    }
+    init();
+})();
+</script>
+{% endblock %}

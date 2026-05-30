@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Clients · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Clients</h1>
+        <p class="subtitle">{{ clients | length }} client{{ '' if clients|length == 1 else 's' }} managed by {{ user.firm.name }}</p>
+    </div>
+    <a class="button" href="/clients/new">+ New client</a>
+</div>
+
+<div class="card" style="padding:0">
+{% if clients %}
+<table class="data">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Industry</th>
+            <th>Location</th>
+            <th>Currency</th>
+            <th>Submission day</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for c in clients %}
+        <tr>
+            <td><a href="/clients/{{ c.id }}"><strong>{{ c.name }}</strong></a></td>
+            <td>{{ c.industry or '—' }}</td>
+            <td>
+                {% if c.city or c.country_code %}
+                    {{ c.city or '' }}{% if c.city and c.country_code %}, {% endif %}{{ countries.get(c.country_code, '') }}
+                {% else %}—{% endif %}
+            </td>
+            <td>{{ c.base_currency }}</td>
+            <td>Day {{ c.submission_day_of_month }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>No clients yet.</p>
+    <a href="/clients/new" class="button">Add your first client</a>
+</div>
+{% endif %}
+</div>
+{% endblock %}

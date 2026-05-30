@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Bank Statement → Excel · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ service.icon }} Bank Statement → Excel</h1>
+        <p class="subtitle">{{ service.short }}</p>
+    </div>
+    <a href="/services" class="button ghost">← Services</a>
+</div>
+
+<div class="cols-2-13">
+    <div class="card">
+        <h2>What it does</h2>
+        <p style="font-size:0.9rem;line-height:1.6;margin-top:0.5rem">
+            Upload a bank statement PDF. FinCoach detects the bank, parses every
+            transaction, verifies the balance chain mathematically, and gives you
+            back a clean Excel file.
+        </p>
+        <h3 style="margin-top:1rem">Supported banks</h3>
+        <ul style="line-height:1.7;font-size:0.85rem;padding-left:1.1rem">
+            <li>Halkbank (vector PDFs, both layouts)</li>
+            <li>Akbank</li>
+            <li>Ziraat (vector + scanned/OCR)</li>
+            <li>Yapı Kredi</li>
+            <li>Kuveyt Türk</li>
+            <li>Türkiye Finans Katılım</li>
+            <li>Other banks: generic fallback parser</li>
+        </ul>
+        {% if not ocr_available %}
+        <div class="banner warning" style="margin-top:1rem">
+            <strong>OCR not available.</strong> Vector PDFs work fine.
+            Scanned/image-only PDFs need <code>tesseract</code> + <code>poppler</code>
+            installed.
+        </div>
+        {% endif %}
+        <p class="muted" style="font-size:0.78rem;margin-top:1rem">
+            Both the source PDF and the resulting Excel are filed under the
+            selected client's <a href="/documents">Documents</a> automatically.
+            Marked hidden from the client by default — toggle visibility there.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>Extract a PDF</h2>
+        {% if error %}<div class="error">{{ error }}</div>{% endif %}
+        <form method="post" action="/services/pdf-extraction/run" enctype="multipart/form-data" style="margin-top:0.75rem">
+            <label class="field">
+                <span class="field-label">Client *</span>
+                <select name="client_id" required>
+                    <option value="">— Select a client —</option>
+                    {% for c in clients %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Bank statement PDF *</span>
+                <input type="file" name="file" accept="application/pdf" required>
+            </label>
+            <button type="submit" class="button">Extract to Excel</button>
+        </form>
+        {% if not clients %}
+        <div class="banner warning" style="margin-top:1rem">
+            No clients yet. <a href="/clients/new">Create one</a> before running an extraction.
+        </div>
+        {% endif %}
+        <div class="banner" style="margin-top:1.25rem">
+            Excel will download automatically. The source PDF is saved on the
+            client's record so you can audit later.
+        </div>
+    </div>
+</div>
+{% endblock %}
