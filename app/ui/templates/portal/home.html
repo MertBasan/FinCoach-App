@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}{{ client.name }} · Müşteri Portalı{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Merhaba {{ user.name.split()[0] }}</h1>
+        <p class="subtitle">{{ client.name }} · {{ period_tr(current_period) }}</p>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Bu ay görevler</div>
+        <div class="stat-value">{{ done }}/{{ total }}</div>
+        <div class="progress" style="margin-top:0.5rem"><div class="bar" style="width: {{ pct }}%"></div></div>
+        <div class="stat-sub">%{{ pct }} tamamlandı</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Sıradaki son tarih</div>
+        {% if next_deadline %}
+            <div class="stat-value" style="font-size:1.1rem">{{ next_deadline.name }}</div>
+            <div class="stat-sub">
+                {{ date_tr(next_deadline.due_date) }}
+                ({{ (next_deadline.due_date - today).days }} gün)
+            </div>
+        {% else %}
+            <div class="stat-value">—</div>
+            <div class="stat-sub good">Bekleyen yok</div>
+        {% endif %}
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Belgeler</div>
+        <div class="stat-value">{{ docs | length }}</div>
+        <div class="stat-sub">Sizinle paylaşılan</div>
+    </div>
+</div>
+
+<div class="cols-2">
+    <div class="card">
+        <h2>Muhasebecinizin bu ayki ilerlemesi</h2>
+        {% if tasks %}
+        <table class="data" style="margin-top:0.75rem">
+            <thead><tr><th>Görev</th><th>Vade</th><th>Durum</th></tr></thead>
+            <tbody>
+            {% for t in tasks %}
+            {% set status_tr = {'pending':'Beklemede','in_progress':'Devam Ediyor','done':'Tamamlandı'}.get(t.status, t.status) %}
+            <tr>
+                <td>{{ t.name }}</td>
+                <td>{{ date_tr(t.due_date) }}</td>
+                <td>
+                    {% if t.status != 'done' and t.due_date < today %}
+                        <span class="badge overdue">Süresi Geçti</span>
+                    {% else %}
+                        <span class="badge {{ t.status }}">{{ status_tr }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <p class="muted" style="font-size:0.78rem;margin-top:0.75rem">
+            Süresi geçen ve sizin için önemli bir şey varsa lütfen muhasebecinizle iletişime geçin.
+        </p>
+        {% else %}
+        <p class="muted">Bu ay için planlanmış görev yok.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Sizinle paylaşılan belgeler</h2>
+        {% if docs %}
+        <table class="data" style="margin-top:0.75rem">
+            <tbody>
+            {% for d in docs %}
+            <tr>
+                <td><a href="/documents/{{ d.id }}/download">{{ d.name }}</a></td>
+                <td>{{ d.document_type | replace('_', ' ') }}</td>
+                <td class="muted">{{ date_tr(d.created_at) }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            Henüz belge paylaşılmadı.
+            <div class="muted" style="margin-top:0.5rem;font-size:0.85rem">
+                Muhasebeciniz bir belgeyi görünür yaptığında burada görünecek.
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:1rem">
+    <h2>💬 Karar vermeniz mi gerekiyor?</h2>
+    <p class="subtitle">Rakamlarınızla ilgili sade Türkçe açıklamalar için FinCoach AI Asistanına sorun. Muhasebecinizin hazırladığı verilerle çalışır.</p>
+    <a href="/portal/assistant" class="button" style="margin-top:0.5rem">AI Asistanı Aç</a>
+</div>
+{% endblock %}

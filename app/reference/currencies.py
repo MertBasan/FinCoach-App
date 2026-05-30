@@ -1,0 +1,30 @@
+# Most-used currencies. The full ISO list has ~180; this covers ~95% of SMEs.
+CURRENCIES = [
+    ("TRY", "Türk Lirası (₺)"),
+    ("EUR", "Euro (€)"),
+    ("USD", "ABD Doları ($)"),
+    ("GBP", "İngiliz Sterlini (£)"),
+    ("CHF", "İsviçre Frangı"),
+    ("SEK", "İsveç Kronu"),
+    ("NOK", "Norveç Kronu"),
+    ("DKK", "Danimarka Kronu"),
+    ("PLN", "Polonya Zlotisi"),
+    ("CZK", "Çek Korunası"),
+    ("HUF", "Macar Forinti"),
+    ("RON", "Rumen Leyi"),
+    ("CAD", "Kanada Doları"),
+    ("AUD", "Avustralya Doları"),
+    ("NZD", "Yeni Zelanda Doları"),
+    ("INR", "Hindistan Rupisi"),
+    ("SGD", "Singapur Doları"),
+    ("HKD", "Hong Kong Doları"),
+    ("JPY", "Japon Yeni"),
+    ("CNY", "Çin Yuanı"),
+    ("AED", "BAE Dirhemi"),
+    ("SAR", "Suudi Riyali"),
+    ("ZAR", "Güney Afrika Randı"),
+    ("BRL", "Brezilya Reali"),
+    ("MXN", "Meksika Pesosu"),
+]
+
+CURRENCY_CODES = {code for code, _ in CURRENCIES}

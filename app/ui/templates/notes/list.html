@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Notlar · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Notlar</h1>
+        <p class="subtitle">Hızlı notlar, hatırlatmalar, müşteriye özel notlar</p>
+    </div>
+</div>
+
+<div class="cols-2-13">
+    <div class="card">
+        <h2>Yeni not</h2>
+        <form method="post" action="/notes" style="margin-top:0.75rem">
+            <label class="field">
+                <span class="field-label">Başlık</span>
+                <input type="text" name="title" required>
+            </label>
+            <label class="field">
+                <span class="field-label">İçerik</span>
+                <textarea name="body" rows="4"></textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">Müşteriye bağla (opsiyonel)</span>
+                <select name="client_id">
+                    <option value="">— Firma geneli —</option>
+                    {% for c in clients %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button type="submit" class="button">Notu Kaydet</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Tüm notlar</h2>
+        {% if notes %}
+        <ul style="list-style:none;padding:0;margin:0.75rem 0 0">
+            {% for n in notes %}
+            <li style="padding:0.85rem 0;border-bottom:1px solid var(--line-soft)">
+                <div class="row-between">
+                    <strong>{{ n.title }}</strong>
+                    <form method="post" action="/notes/{{ n.id }}/delete" style="margin:0">
+                        <button type="submit" class="button ghost sm">Sil</button>
+                    </form>
+                </div>
+                <p class="muted" style="font-size:0.78rem;margin:0.2rem 0">
+                    {% if n.client %}<span class="badge category">{{ n.client.name }}</span>{% else %}<span class="badge pending">Firma geneli</span>{% endif %}
+                    · {{ date_tr(n.updated_at) }}, {{ n.updated_at.strftime('%H:%M') }}
+                </p>
+                <p style="margin:0.4rem 0 0;white-space:pre-wrap">{{ n.body }}</p>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state">Henüz not yok. Solda bir tane ekleyin.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

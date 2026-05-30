@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}İşlem inceleme · {{ client.name }} · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>İşlem inceleme</h1>
+        <p class="subtitle">
+            <a href="/clients/{{ client.id }}">{{ client.name }}</a>
+            {% if current_period %} · {{ period_tr(year=current_period.year, month=current_period.month) }}{% endif %}
+        </p>
+    </div>
+    <div class="row-gap">
+        {% if all_periods %}
+        <form method="get" action="/clients/{{ client.id }}/transactions" class="task-status-form">
+            <select name="period" onchange="this.form.submit()">
+                {% for p in all_periods %}
+                {% set ps = "%04d-%02d" | format(p.year, p.month) %}
+                <option value="{{ ps }}" {% if current_period and current_period.id == p.id %}selected{% endif %}>{{ period_tr(year=p.year, month=p.month) }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+        <a href="/clients/{{ client.id }}/reports" class="button ghost">Raporları gör</a>
+        <a href="/services/pdf-extraction" class="button">+ Yeni aktarım</a>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Bekleyen</div>
+        <div class="stat-value">{{ pending_count }}</div>
+        <div class="stat-sub {% if pending_count > 0 %}bad{% else %}good{% endif %}">
+            {% if pending_count == 0 %}Hepsi incelendi{% else %}Onay bekliyor{% endif %}
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Onaylanmış</div>
+        <div class="stat-value">{{ approved_count }}</div>
+        <div class="stat-sub good">Raporlara yansıyor</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Bu dönemde toplam</div>
+        <div class="stat-value">{{ transactions | length }}</div>
+        <div class="stat-sub">Tüm kaynaklar</div>
+    </div>
+</div>
+
+{% if not current_period %}
+<div class="empty-state">
+    {{ client.name }} için henüz dönem yok.
+    <div style="margin-top:0.75rem">
+        İşlem yüklemek için <a href="/services/pdf-extraction">banka ekstresi aktarımı</a> yapın.
+    </div>
+</div>
+{% elif not transactions %}
+<div class="empty-state">
+    Bu dönemde işlem yok.
+    <div style="margin-top:0.75rem">
+        Bu müşteri için <a href="/services/pdf-extraction">banka ekstresi aktarımı</a> yapın.
+    </div>
+</div>
+{% else %}
+
+<div class="banner">
+    Rakamlar banka ekstresi satırlarından hesaplanır. Düzenleyin, bir hesaba kodlayın ve onaylayın.
+    Yalnızca <strong>onaylanmış</strong> satırlar raporlara ve KPI'lara yansır.
+</div>
+
+<form method="post" action="/clients/{{ client.id }}/transactions/bulk-approve" id="bulkForm">
+    <input type="hidden" name="period" value="{{ "%04d-%02d" | format(current_period.year, current_period.month) }}">
+
+    <div class="card" style="padding:0;margin-top:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem 1rem;border-bottom:1px solid var(--line)">
+            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem">
+                <input type="checkbox" id="selectAll" onclick="toggleAll(this)">
+                Tüm bekleyenleri seç
+            </label>
+            <button type="submit" class="button">Seçilenleri onayla</button>
+        </div>
+        <table class="data">
+            <thead>
+                <tr>
+                    <th style="width:32px"></th>
+                    <th>Tarih</th>
+                    <th>Açıklama</th>
+                    <th>Tutar</th>
+                    <th>Hesap</th>
+                    <th>Durum</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for t in transactions %}
+                <tr class="task-row">
+                    <td>
+                        {% if t.approval_status != 'approved' %}
+                        <input type="checkbox" name="tx_id" value="{{ t.id }}" class="rowcheck">
+                        {% endif %}
+                    </td>
+                    <td>{{ date_tr(t.date) }}</td>
+                    <td style="font-size:0.85rem">
+                        <form method="post" action="/clients/{{ client.id }}/transactions/{{ t.id }}/update" style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;margin:0">
+                            <input type="text" name="description" value="{{ t.description }}" style="flex:1;min-width:180px;padding:0.3rem;font-size:0.82rem">
+                            <input type="number" step="0.01" name="amount" value="{{ '{:.2f}'.format(t.amount) }}" style="width:110px;padding:0.3rem;font-size:0.82rem">
+                            <select name="account_id" style="width:200px;padding:0.3rem;font-size:0.82rem">
+                                <option value="">— sınıflandırılmamış —</option>
+                                {% for a in accounts %}
+                                <option value="{{ a.id }}" {% if t.account_id == a.id %}selected{% endif %}>{{ a.code }} {{ a.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="button ghost sm" title="Değişiklikleri kaydet">Kaydet</button>
+                        </form>
+                    </td>
+                    <td style="font-variant-numeric: tabular-nums; text-align:right; {% if t.amount < 0 %}color:var(--danger){% else %}color:var(--success){% endif %}">
+                        {{ money(t.amount, sign=True) }}
+                    </td>
+                    <td>
+                        {% if t.account %}
+                            <span class="muted" style="font-size:0.8rem">{{ t.account.code }}</span> {{ t.account.name }}
+                        {% else %}
+                            <span class="badge pending">sınıflandırılmamış</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if t.approval_status == 'approved' %}
+                            <span class="badge done">Onaylandı</span>
+                        {% elif t.approval_status == 'ai_suggested' %}
+                            <span class="badge in_progress">AI Önerisi</span>
+                        {% else %}
+                            <span class="badge pending">Beklemede</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if t.approval_status == 'approved' %}
+                        <form method="post" action="/clients/{{ client.id }}/transactions/{{ t.id }}/unapprove" style="margin:0">
+                            <button type="submit" class="button ghost sm">Onayı Kaldır</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="/clients/{{ client.id }}/transactions/{{ t.id }}/approve" style="margin:0">
+                            <button type="submit" class="button sm">Onayla</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</form>
+
+<script>
+function toggleAll(master) {
+    document.querySelectorAll('.rowcheck').forEach(cb => { cb.checked = master.checked; });
+}
+</script>
+{% endif %}
+{% endblock %}

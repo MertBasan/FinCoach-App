@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}FinCoach{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+</head>
+<body class="{% if not user %}auth-page{% endif %}">
+
+{% if user and user.role in ('accountant', 'superuser') %}
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <a href="/" class="brand">
+            <span class="brand-mark">FC</span>
+            <span class="brand-name">FinCoach</span>
+        </a>
+        <button class="sidebar-toggle" onclick="document.body.classList.toggle('sb-collapsed')" title="Daralt">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6"/>
+            </svg>
+        </button>
+    </div>
+    <nav class="sidebar-nav">
+        {% if user.role == 'superuser' %}
+        <a href="/admin" class="navlink {% if request.url.path.startswith('/admin') %}active{% endif %}">
+            <span class="icon">🛡️</span><span class="label">Yönetim</span>
+        </a>
+        {% endif %}
+        <a href="/" class="navlink {% if request.url.path == '/' %}active{% endif %}">
+            <span class="icon">📊</span><span class="label">Pano</span>
+        </a>
+        <a href="/clients" class="navlink {% if request.url.path.startswith('/clients') %}active{% endif %}">
+            <span class="icon">🏢</span><span class="label">Müşteriler</span>
+        </a>
+        <a href="/tasks" class="navlink {% if request.url.path.startswith('/tasks') %}active{% endif %}">
+            <span class="icon">✅</span><span class="label">Aylık Görevler</span>
+        </a>
+        <a href="/documents" class="navlink {% if request.url.path.startswith('/documents') %}active{% endif %}">
+            <span class="icon">📁</span><span class="label">Belgeler</span>
+        </a>
+        <a href="/notes" class="navlink {% if request.url.path.startswith('/notes') %}active{% endif %}">
+            <span class="icon">📝</span><span class="label">Notlar</span>
+        </a>
+        <a href="/services" class="navlink {% if request.url.path.startswith('/services') %}active{% endif %}">
+            <span class="icon">🧰</span><span class="label">Hizmetler</span>
+        </a>
+    </nav>
+    <div class="sidebar-footer">
+        <div class="user-card">
+            <div class="user-avatar">{{ user.name[0] | upper }}</div>
+            <div class="user-meta">
+                <div class="user-name">{{ user.name }}</div>
+                <div class="user-firm">{{ user.firm.name if user.firm else 'Platform' }}</div>
+            </div>
+        </div>
+        <form action="/logout" method="post" class="logout-form">
+            <button type="submit" class="logout-btn">Çıkış Yap</button>
+        </form>
+    </div>
+</aside>
+{% elif user and user.role == 'client' %}
+<aside class="sidebar sidebar-client" id="sidebar">
+    <div class="sidebar-header">
+        <a href="/portal" class="brand">
+            <span class="brand-mark">FC</span>
+            <span class="brand-name">FinCoach</span>
+        </a>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="/portal" class="navlink {% if request.url.path == '/portal' %}active{% endif %}">
+            <span class="icon">🏠</span><span class="label">Genel Bakış</span>
+        </a>
+        <a href="/portal/insights" class="navlink {% if request.url.path == '/portal/insights' %}active{% endif %}">
+            <span class="icon">📈</span><span class="label">Mali Görünüm</span>
+        </a>
+        <a href="/portal/assistant" class="navlink {% if request.url.path == '/portal/assistant' %}active{% endif %}">
+            <span class="icon">💬</span><span class="label">AI Asistan</span>
+        </a>
+    </nav>
+    <div class="sidebar-footer">
+        <div class="user-card">
+            <div class="user-avatar">{{ user.name[0] | upper }}</div>
+            <div class="user-meta">
+                <div class="user-name">{{ user.name }}</div>
+                <div class="user-firm">Müşteri Portalı</div>
+            </div>
+        </div>
+        <form action="/logout" method="post" class="logout-form">
+            <button type="submit" class="logout-btn">Çıkış Yap</button>
+        </form>
+    </div>
+</aside>
+{% endif %}
+
+<main class="main {% if not user %}main-auth{% endif %}">
+    {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>

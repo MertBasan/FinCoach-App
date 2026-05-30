@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ client.name }} · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ client.name }}</h1>
+        <p class="subtitle">
+            {% if client.industry %}{{ client.industry }} · {% endif %}{{ client.base_currency }}
+            {% if country_name %} · {{ country_name }}{% endif %}
+            {% if client.vkn %} · VKN: {{ client.vkn }}{% endif %}
+        </p>
+    </div>
+    <div class="row-gap">
+        <a href="/clients/{{ client.id }}/reports" class="button">📊 Raporlar</a>
+        <a href="/clients/{{ client.id }}/transactions" class="button ghost">İşlem İnceleme</a>
+        <a href="/documents?client_id={{ client.id }}" class="button ghost">Belgeler</a>
+        <a href="/tasks?period={{ period }}" class="button ghost">Görevler</a>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Bu ay görevler</div>
+        <div class="stat-value">{{ done }}/{{ total }}</div>
+        <div class="progress" style="margin-top:0.5rem"><div class="bar" style="width: {{ pct }}%"></div></div>
+        <div class="stat-sub">%{{ pct }} tamamlandı</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Gönderim Vadesi</div>
+        <div class="stat-value">{{ client.submission_day_of_month }}. gün</div>
+        <div class="stat-sub">Her ayın</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Belgeler</div>
+        <div class="stat-value">{{ documents | length }}</div>
+        <div class="stat-sub">Son yüklemeler</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Notlar</div>
+        <div class="stat-value">{{ notes | length }}</div>
+        <div class="stat-sub">Bu müşteriye bağlı</div>
+    </div>
+</div>
+
+<div class="cols-2">
+    <div class="card">
+        <h2>Adres ve detaylar</h2>
+        <dl class="kvlist" style="margin-top:0.75rem">
+            <dt>Adres</dt>
+            <dd>
+            {% if client.address_line1 %}{{ client.address_line1 }}<br>{% endif %}
+            {% if client.address_line2 %}{{ client.address_line2 }}<br>{% endif %}
+            {% if client.city or client.postcode %}{{ client.city or '' }} {{ client.postcode or '' }}<br>{% endif %}
+            {% if country_name %}{{ country_name }}{% endif %}
+            {% if not client.address_line1 and not country_name %}—{% endif %}
+            </dd>
+            <dt>VKN</dt><dd>{{ client.vkn or '—' }}</dd>
+            <dt>TCKN</dt><dd>{{ client.tckn or '—' }}</dd>
+            <dt>Para birimi</dt><dd>{{ client.base_currency }}</dd>
+            <dt>Sektör</dt><dd>{{ client.industry or '—' }}</dd>
+            <dt>Oluşturuldu</dt><dd>{{ date_tr(client.created_at) }}</dd>
+        </dl>
+    </div>
+    <div class="card">
+        <h2>Bu ayın görevleri ({{ period_tr(period) }})</h2>
+        {% if tasks %}
+        <table class="data" style="margin-top:0.75rem">
+            <thead><tr><th>Görev</th><th>Vade</th><th>Durum</th></tr></thead>
+            <tbody>
+            {% for t in tasks %}
+            {% set status_tr = {'pending':'Beklemede','in_progress':'Devam Ediyor','done':'Tamamlandı'}.get(t.status, t.status) %}
+            <tr>
+                <td>{{ t.name }}</td>
+                <td>{{ date_tr(t.due_date) }}</td>
+                <td><span class="badge {{ t.status }}">{{ status_tr }}</span></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}<p class="muted">Bu dönem için henüz görev yok.</p>{% endif %}
+    </div>
+</div>
+
+<div class="cols-2">
+    <div class="card">
+        <div class="row-between">
+            <h2>Son belgeler</h2>
+            <a href="/documents?client_id={{ client.id }}" class="muted" style="font-size:0.85rem">Tümünü gör →</a>
+        </div>
+        {% if documents %}
+        <table class="data" style="margin-top:0.75rem">
+            <tbody>
+            {% for d in documents %}
+            <tr>
+                <td><a href="/documents/{{ d.id }}/download">{{ d.name }}</a></td>
+                <td>{{ d.document_type | replace('_', ' ') }}</td>
+                <td class="muted">{{ date_tr(d.created_at) }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <div class="empty-state">Henüz belge yok
+            <div style="margin-top:0.5rem"><a href="/documents?client_id={{ client.id }}" class="button sm">Yükle</a></div>
+            </div>
+        {% endif %}
+    </div>
+    <div class="card">
+        <h2>Son notlar</h2>
+        {% if notes %}
+        <ul style="list-style:none;padding:0;margin:0.75rem 0 0">
+        {% for n in notes %}
+            <li style="padding:0.5rem 0;border-bottom:1px solid var(--line-soft)">
+                <strong>{{ n.title }}</strong>
+                <p class="muted" style="margin:0.25rem 0 0;font-size:0.85rem">{{ n.body | truncate(120) }}</p>
+            </li>
+        {% endfor %}
+        </ul>
+        {% else %}<p class="muted">Bu müşteri için not yok.</p>{% endif %}
+    </div>
+</div>
+{% endblock %}

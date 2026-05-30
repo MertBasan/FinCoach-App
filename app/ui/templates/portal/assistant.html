@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}AI Asistan · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>💬 AI Asistan</h1>
+    <a href="/portal" class="button ghost">← Portal</a>
+</div>
+<div class="card">
+    <h2>İşletmeniz hakkında soru sorun</h2>
+    <p class="subtitle" style="margin:0.5rem 0 1rem">
+        FinCoach asistanı sade Türkçe ile yanıt verir; yalnızca muhasebecinizin onayladığı rakamları kullanır.
+        Rakam uydurmaz, onaylanmamış konularda spekülasyon yapmaz.
+    </p>
+    <div class="banner warning">
+        <strong>Çok yakında.</strong> AI asistanı, KPI motoru ve onay akışı devreye girince hazır olacak.
+        Şimdilik aşağıda nasıl görüneceğini önizleyebilirsiniz.
+    </div>
+
+    <div style="margin-top:1.5rem;border:1px solid var(--line);border-radius:var(--radius);padding:1rem;background:var(--line-soft)">
+        <div style="margin-bottom:0.75rem">
+            <strong>Siz:</strong> Geçen ayı önceki aya göre nasıl geçirdik?
+        </div>
+        <div>
+            <strong>FinCoach AI:</strong> <em>Muhasebecinizin onayladığı rakamlara göre</em>, hasılat önceki aya kıyasla arttı.
+            En büyük katkı tekrar eden müşteri satışlarından geldi. Giderler büyük ölçüde sabit kaldı.
+            Muhasebeciniz, normalden yüksek bir yazılım abonelik gideri için bir not düşmüş — beklenip beklenmediğini doğrulamakta fayda var.
+        </div>
+        <p class="muted" style="font-size:0.78rem;margin-top:0.75rem">
+            ⚠️ Bu bir önizlemedir. Gerçek yanıtlar sizin onaylı rakamlarınıza dayanacaktır.
+        </p>
+    </div>
+
+    <h3 style="margin-top:1.5rem">Yakında sorabileceğiniz örnek sorular</h3>
+    <ul style="line-height:1.8;font-size:0.9rem">
+        <li>"Bu çeyrekte nakit akışım nasıl?"</li>
+        <li>"En çok borcu olan müşterim hangisi?"</li>
+        <li>"KDV borcum geçen çeyreğe göre arttı mı?"</li>
+        <li>"Muhasebecim geçen ay için ne not aldı?"</li>
+    </ul>
+</div>
+{% endblock %}

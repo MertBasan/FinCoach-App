@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Görevler · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Aylık görev panosu</h1>
+        <p class="subtitle">{{ period_tr(period) }}</p>
+    </div>
+    <div class="row-gap">
+        <a href="/tasks?period={{ prev_period }}" class="button ghost">← {{ period_tr(prev_period) }}</a>
+        {% if period != current_period %}
+            <a href="/tasks" class="button ghost">Bu Ay</a>
+        {% endif %}
+        <a href="/tasks?period={{ next_period_str }}" class="button ghost">{{ period_tr(next_period_str) }} →</a>
+        <form method="post" action="/tasks/generate" class="task-status-form">
+            <input type="hidden" name="period" value="{{ next_period_str }}">
+            <button class="button" type="submit">+ {{ period_tr(next_period_str) }} için oluştur</button>
+        </form>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Toplam görev</div>
+        <div class="stat-value">{{ total }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Tamamlanan</div>
+        <div class="stat-value">{{ done }}</div>
+        <div class="progress" style="margin-top:0.5rem"><div class="bar" style="width: {{ pct }}%"></div></div>
+        <div class="stat-sub">%{{ pct }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Süresi geçen</div>
+        <div class="stat-value">{{ overdue }}</div>
+        <div class="stat-sub {% if overdue > 0 %}bad{% else %}good{% endif %}">
+            {% if overdue == 0 %}Her şey yolunda{% else %}İlgilenilmesi gerekiyor{% endif %}
+        </div>
+    </div>
+</div>
+
+{% if grouped %}
+    {% for cid, tasks in grouped.items() %}
+    <div class="client-group">
+        <div class="client-group-header">
+            <strong>{{ clients_by_id[cid].name }}</strong>
+            <span class="muted">{{ tasks | selectattr('status', 'equalto', 'done') | list | length }}/{{ tasks | length }} tamamlandı</span>
+        </div>
+        <table class="data" style="margin-top:0">
+            <thead>
+                <tr>
+                    <th style="width:35%">Görev</th>
+                    <th>Kategori</th>
+                    <th>Vade</th>
+                    <th>Durum</th>
+                    <th>Güncelle</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for t in tasks %}
+                <tr class="task-row {% if t.status != 'done' and t.due_date < today %}overdue{% endif %}">
+                    <td>{{ t.name }}</td>
+                    <td><span class="badge category">{{ t.category }}</span></td>
+                    <td>{{ date_tr(t.due_date) }}</td>
+                    <td>
+                        {% set status_tr = {'pending':'Beklemede','in_progress':'Devam Ediyor','done':'Tamamlandı'}.get(t.status, t.status) %}
+                        {% if t.status != 'done' and t.due_date < today %}
+                            <span class="badge overdue">Süresi Geçti</span>
+                        {% else %}
+                            <span class="badge {{ t.status }}">{{ status_tr }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="post" action="/tasks/{{ t.id }}/status" class="task-status-form">
+                            <select name="new_status" onchange="this.form.submit()">
+                                <option value="pending" {% if t.status == 'pending' %}selected{% endif %}>Beklemede</option>
+                                <option value="in_progress" {% if t.status == 'in_progress' %}selected{% endif %}>Devam Ediyor</option>
+                                <option value="done" {% if t.status == 'done' %}selected{% endif %}>Tamamlandı</option>
+                            </select>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty-state">
+        {{ period_tr(period) }} için görev yok.
+        <div style="margin-top:0.75rem">
+            <form method="post" action="/tasks/generate" class="task-status-form">
+                <input type="hidden" name="period" value="{{ period }}">
+                <button class="button" type="submit">{{ period_tr(period) }} için görev oluştur</button>
+            </form>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

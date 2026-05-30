@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Kayıt Ol · FinCoach{% endblock %}
+{% block content %}
+<div class="form-card auth-card-wrap">
+    <h1>Firmanızı Kaydedin</h1>
+    <p class="muted">Firma sahibi olarak kurulumunuz yapılacak.</p>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post" action="/register">
+        <label class="field">
+            <span class="field-label">Firma adı</span>
+            <input type="text" name="firm_name" required autofocus placeholder="Aydın Mali Müşavirlik">
+        </label>
+        <label class="field">
+            <span class="field-label">Adınız Soyadınız</span>
+            <input type="text" name="name" required>
+        </label>
+        <label class="field">
+            <span class="field-label">E-posta</span>
+            <input type="email" name="email" required>
+        </label>
+        <label class="field">
+            <span class="field-label">Parola</span>
+            <input type="password" name="password" required minlength="8">
+        </label>
+        <button type="submit" class="button">Hesap Oluştur</button>
+    </form>
+    <p class="auth-footer">Zaten kayıtlı mısınız? <a href="/login">Giriş yapın</a>.</p>
+</div>
+{% endblock %}

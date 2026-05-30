@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Banka Ekstresi → Excel · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ service.icon }} Banka Ekstresi → Excel</h1>
+        <p class="subtitle">{{ service.short }}</p>
+    </div>
+    <a href="/services" class="button ghost">← Hizmetler</a>
+</div>
+
+<div class="cols-2-13">
+    <div class="card">
+        <h2>Nasıl çalışır?</h2>
+        <p style="font-size:0.9rem;line-height:1.6;margin-top:0.5rem">
+            Banka ekstresi PDF'sini yükleyin. FinCoach bankayı tespit eder, her işlemi
+            ayrıştırır, bakiye zincirini matematiksel olarak doğrular ve size temiz
+            bir Excel dosyası verir.
+        </p>
+        <h3 style="margin-top:1rem">Desteklenen bankalar</h3>
+        <ul style="line-height:1.7;font-size:0.85rem;padding-left:1.1rem">
+            <li>Halkbank (vektör PDF'ler, iki düzen)</li>
+            <li>Akbank</li>
+            <li>Ziraat (vektör + taranmış/OCR)</li>
+            <li>Yapı Kredi</li>
+            <li>Kuveyt Türk</li>
+            <li>Türkiye Finans Katılım</li>
+            <li>Diğer bankalar: genel ayrıştırıcı</li>
+        </ul>
+        {% if not ocr_available %}
+        <div class="banner warning" style="margin-top:1rem">
+            <strong>OCR mevcut değil.</strong> Vektör PDF'ler sorunsuz çalışır.
+            Taranmış/görüntü tabanlı PDF'ler için <code>tesseract</code> ve
+            <code>poppler</code> yüklü olmalıdır.
+        </div>
+        {% endif %}
+        <p class="muted" style="font-size:0.78rem;margin-top:1rem">
+            Hem kaynak PDF hem de oluşturulan Excel, seçilen müşterinin
+            <a href="/documents">Belgeler</a> bölümüne otomatik olarak kaydedilir.
+            Müşteriden varsayılan olarak gizlidir — görünürlüğü oradan değiştirin.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>PDF aktarımı yap</h2>
+        {% if error %}<div class="error">{{ error }}</div>{% endif %}
+        <form method="post" action="/services/pdf-extraction/run" enctype="multipart/form-data" style="margin-top:0.75rem">
+            <label class="field">
+                <span class="field-label">Müşteri *</span>
+                <select name="client_id" required>
+                    <option value="">— Müşteri seçin —</option>
+                    {% for c in clients %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Banka ekstresi PDF *</span>
+                <input type="file" name="file" accept="application/pdf" required>
+            </label>
+            <button type="submit" class="button">Excel'e Aktar</button>
+        </form>
+        {% if not clients %}
+        <div class="banner warning" style="margin-top:1rem">
+            Henüz müşteri yok. Aktarım yapmadan önce <a href="/clients/new">bir tane oluşturun</a>.
+        </div>
+        {% endif %}
+        <div class="banner" style="margin-top:1.25rem">
+            Excel otomatik olarak indirilir. Kaynak PDF müşterinin kaydına işlenir,
+            daha sonra denetlemek için kullanılabilir.
+        </div>
+    </div>
+</div>
+{% endblock %}

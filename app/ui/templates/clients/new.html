@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Yeni Müşteri · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Yeni Müşteri</h1>
+    <a href="/clients" class="button ghost">İptal</a>
+</div>
+
+<div class="form-card form-card-wide" style="margin:0">
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+<form method="post" action="/clients/new">
+    <h3 style="margin-bottom:1rem">Temel Bilgiler</h3>
+    <div class="fields-row">
+        <label class="field">
+            <span class="field-label">Müşteri adı *</span>
+            <input type="text" name="name" required autofocus placeholder="Acme Ltd. Şti.">
+        </label>
+        <label class="field">
+            <span class="field-label">Sektör</span>
+            <input type="text" name="industry" placeholder="Örn. Konaklama, SaaS">
+        </label>
+    </div>
+    <div class="fields-row">
+        <label class="field">
+            <span class="field-label">Para birimi *</span>
+            <select name="base_currency" required>
+                {% for code, label in currencies %}
+                <option value="{{ code }}" {% if code == 'TRY' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="field">
+            <span class="field-label">Gönderim son günü (ayın günü)</span>
+            <input type="number" name="submission_day_of_month" min="1" max="28" value="10">
+        </label>
+    </div>
+
+    <h3 style="margin:1.5rem 0 1rem">Vergi Kimlikleri</h3>
+    <div class="fields-row">
+        <label class="field">
+            <span class="field-label">VKN (Vergi Kimlik No)</span>
+            <input type="text" name="vkn" placeholder="10 haneli" maxlength="10" pattern="[0-9]{10}">
+        </label>
+        <label class="field">
+            <span class="field-label">TCKN (T.C. Kimlik No)</span>
+            <input type="text" name="tckn" placeholder="11 haneli" maxlength="11" pattern="[0-9]{11}">
+        </label>
+    </div>
+    <p class="muted" style="font-size:0.78rem;margin-top:-0.5rem">
+        Şirketler için VKN, şahıs şirketleri için TCKN; biri yeterlidir.
+    </p>
+
+    <h3 style="margin:1.5rem 0 1rem">Adres</h3>
+    <label class="field">
+        <span class="field-label">Adres satırı 1</span>
+        <input type="text" name="address_line1" placeholder="Cadde / sokak, No">
+    </label>
+    <label class="field">
+        <span class="field-label">Adres satırı 2</span>
+        <input type="text" name="address_line2" placeholder="Mahalle / semt (opsiyonel)">
+    </label>
+    <div class="fields-row">
+        <label class="field">
+            <span class="field-label">İl / Şehir</span>
+            <input type="text" name="city" placeholder="İstanbul">
+        </label>
+        <label class="field">
+            <span class="field-label">Posta kodu</span>
+            <input type="text" name="postcode" placeholder="5 haneli" maxlength="5" pattern="[0-9]{5}">
+        </label>
+    </div>
+    <label class="field">
+        <span class="field-label">Ülke</span>
+        <select name="country_code">
+            {% for code, label in countries %}
+            <option value="{{ code }}" {% if code == 'TR' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </label>
+
+    <div class="row-gap" style="margin-top:1.5rem">
+        <button type="submit" class="button">Müşteri Oluştur</button>
+        <a href="/clients" class="button ghost">İptal</a>
+    </div>
+</form>
+</div>
+{% endblock %}

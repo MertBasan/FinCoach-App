@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Raporlar · {{ client.name }} · FinCoach{% endblock %}
+
+{% macro delta(curr, prior) -%}
+  {%- if prior is none -%}
+    <span class="muted" style="font-size:0.78rem">karşılaştırma yok</span>
+  {%- elif prior == 0 -%}
+    <span class="muted" style="font-size:0.78rem">önceki 0</span>
+  {%- else -%}
+    {%- set pct = ((curr - prior) / prior * 100) -%}
+    {%- if pct > 0 -%}
+      <span style="color:var(--success);font-size:0.78rem">+{{ percent_tr(pct) }}</span>
+    {%- elif pct < 0 -%}
+      <span style="color:var(--danger);font-size:0.78rem">{{ percent_tr(pct) }}</span>
+    {%- else -%}
+      <span class="muted" style="font-size:0.78rem">{{ percent_tr(pct) }}</span>
+    {%- endif -%}
+  {%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Raporlar</h1>
+        <p class="subtitle">
+            <a href="/clients/{{ client.id }}">{{ client.name }}</a>
+            {% if current_period %} · {{ period_tr(year=current_period.year, month=current_period.month) }}
+              · {{ client.base_currency }}{% endif %}
+        </p>
+    </div>
+    <div class="row-gap">
+        {% if all_periods %}
+        <form method="get" action="/clients/{{ client.id }}/reports" class="task-status-form">
+            <select name="period" onchange="this.form.submit()">
+                {% for p in all_periods %}
+                {% set ps = "%04d-%02d" | format(p.year, p.month) %}
+                <option value="{{ ps }}" {% if current_period and current_period.id == p.id %}selected{% endif %}>{{ period_tr(year=p.year, month=p.month) }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+        <a href="/clients/{{ client.id }}/transactions" class="button ghost">İşlem İnceleme</a>
+    </div>
+</div>
+
+{% if not current_period or not pl %}
+<div class="empty-state">
+    Henüz raporlanabilir veri yok.
+    <div style="margin-top:0.75rem">
+        Bir <a href="/services/pdf-extraction">banka ekstresi aktarımı</a> çalıştırın,
+        ardından <a href="/clients/{{ client.id }}/transactions">İşlem İnceleme</a> sayfasında işlemleri onaylayın.
+    </div>
+</div>
+{% else %}
+
+<div class="banner">
+    Tüm rakamlar <strong>yalnızca onaylanmış işlemlerden</strong> hesaplanır.
+    {% if kpis.uncategorised_pct > 0 %}
+        Onaylanmış satırların %{{ kpis.uncategorised_pct }}'i sınıflandırılmamış —
+        daha keskin dağılım için İnceleme sayfasında kodlayın.
+    {% endif %}
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Hasılat</div>
+        <div class="stat-value">{{ money(pl.current.revenue) }}</div>
+        <div class="stat-sub">
+            Önceki Döneme Göre {{ delta(pl.current.revenue, pl.prior_period.revenue if pl.prior_period else none) }}
+            · Önceki Yıla Göre {{ delta(pl.current.revenue, pl.prior_year.revenue if pl.prior_year else none) }}
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Net Kâr</div>
+        <div class="stat-value" style="{% if pl.current.net_profit >= 0 %}color:var(--success){% else %}color:var(--danger){% endif %}">
+            {{ money(pl.current.net_profit) }}
+        </div>
+        <div class="stat-sub">
+            Önceki Döneme Göre {{ delta(pl.current.net_profit, pl.prior_period.net_profit if pl.prior_period else none) }}
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Brüt Kâr Marjı</div>
+        <div class="stat-value">
+            {% if kpis.gross_margin_pct is none %}—{% else %}{{ percent_tr(kpis.gross_margin_pct) }}{% endif %}
+        </div>
+        <div class="stat-sub">Brüt kâr ÷ Hasılat</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Onaylı İşlem</div>
+        <div class="stat-value">{{ kpis.transaction_count }}</div>
+        <div class="stat-sub">%{{ kpis.uncategorised_pct }} sınıflandırılmamış</div>
+    </div>
+</div>
+
+<div class="cols-2">
+    <div class="card">
+        <h2>Gelir Tablosu — {{ period_tr(year=current_period.year, month=current_period.month) }}</h2>
+        <table class="data" style="margin-top:0.75rem">
+            <thead>
+                <tr>
+                    <th>Kalem</th>
+                    <th style="text-align:right">Cari Dönem</th>
+                    <th style="text-align:right">Önceki Dönem</th>
+                    <th style="text-align:right">Önceki Yıl</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Hasılat</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.current.revenue) }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_period.revenue if pl.prior_period else none) }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_year.revenue if pl.prior_year else none) }}</td>
+                </tr>
+                <tr>
+                    <td>Satılan Malın Maliyeti (SMM)</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">({{ money(pl.current.cost_of_sales) }})</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{% if pl.prior_period %}({{ money(pl.prior_period.cost_of_sales) }}){% else %}—{% endif %}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{% if pl.prior_year %}({{ money(pl.prior_year.cost_of_sales) }}){% else %}—{% endif %}</td>
+                </tr>
+                <tr style="background:var(--line-soft)">
+                    <td><strong>Brüt Kâr</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(pl.current.gross_profit) }}</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_period.gross_profit if pl.prior_period else none) }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_year.gross_profit if pl.prior_year else none) }}</td>
+                </tr>
+                <tr>
+                    <td>Faaliyet Giderleri</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">({{ money(pl.current.operating_expenses) }})</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{% if pl.prior_period %}({{ money(pl.prior_period.operating_expenses) }}){% else %}—{% endif %}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{% if pl.prior_year %}({{ money(pl.prior_year.operating_expenses) }}){% else %}—{% endif %}</td>
+                </tr>
+                <tr style="background:var(--accent-soft)">
+                    <td><strong>Net Kâr</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(pl.current.net_profit) }}</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_period.net_profit if pl.prior_period else none) }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.prior_year.net_profit if pl.prior_year else none) }}</td>
+                </tr>
+            </tbody>
+        </table>
+        {% if pl.current.uncategorised_count > 0 %}
+        <p class="muted" style="font-size:0.78rem;margin-top:0.75rem">
+            ⚠ {{ pl.current.uncategorised_count }} onaylanmış işlemin hesap kodu yok ve bu Gelir Tablosu'na dahil edilmedi.
+            <a href="/clients/{{ client.id }}/transactions">İnceleme sayfasında</a> kodlayın.
+        </p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Nakit Akışı — {{ period_tr(cash.period_label) }}</h2>
+        <table class="data" style="margin-top:0.75rem">
+            <tbody>
+                <tr>
+                    <td>Girişler</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--success)">{{ money(cash.inflows, sign=True) }}</td>
+                </tr>
+                <tr>
+                    <td>Çıkışlar</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--danger)">−{{ money(cash.outflows) }}</td>
+                </tr>
+                <tr style="background:var(--accent-soft)">
+                    <td><strong>Net Değişim</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(cash.net_change) }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        <h3 style="margin-top:1.5rem">En Yüksek Gider Kategorileri</h3>
+        {% if kpis.top_expense_lines %}
+        <table class="data" style="margin-top:0.5rem">
+            <tbody>
+            {% for line in kpis.top_expense_lines %}
+                <tr>
+                    <td><span class="muted" style="font-size:0.8rem">{{ line.account_code }}</span> {{ line.account_name }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(line.total) }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="muted">Sınıflandırılmış gider yok.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:1rem">
+    <h2>Hasılat ve gider dağılımı</h2>
+    <div class="cols-2" style="margin-top:0.75rem;margin-bottom:0">
+        <div>
+            <h3>Hesaba göre hasılat</h3>
+            {% if pl.current.revenue_lines %}
+            <table class="data">
+                <tbody>
+                {% for line in pl.current.revenue_lines %}
+                <tr>
+                    <td><span class="muted" style="font-size:0.8rem">{{ line.account_code }}</span> {{ line.account_name }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(line.total) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}<p class="muted">Bu dönemde gelir işlemi yok.</p>{% endif %}
+        </div>
+        <div>
+            <h3>Hesaba göre faaliyet giderleri</h3>
+            {% if pl.current.opex_lines %}
+            <table class="data">
+                <tbody>
+                {% for line in pl.current.opex_lines %}
+                <tr>
+                    <td><span class="muted" style="font-size:0.8rem">{{ line.account_code }}</span> {{ line.account_name }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(line.total) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}<p class="muted">Bu dönemde kodlanmış faaliyet gideri yok.</p>{% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

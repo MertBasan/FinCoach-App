@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Belgeler · FinCoach{% endblock %}
+
+{% set TYPE_LABELS = {
+    'bank_statement': 'Banka Ekstresi',
+    'invoice': 'Fatura',
+    'receipt': 'Fiş',
+    'payroll': 'Bordro',
+    'report': 'Rapor',
+    'extraction_output': 'Aktarım Çıktısı',
+    'other': 'Diğer',
+} %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Belgeler</h1>
+        <p class="subtitle">
+            {% if selected_client %}{{ selected_client.name }} için{% else %}Tüm müşteriler{% endif %}
+        </p>
+    </div>
+    <form method="get" action="/documents" class="task-status-form">
+        <select name="client_id" onchange="this.form.submit()">
+            <option value="">Tüm müşteriler</option>
+            {% for c in clients %}
+            <option value="{{ c.id }}" {% if selected_client and selected_client.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="cols-2-13">
+    <div class="card">
+        <h2>Belge yükle</h2>
+        <form method="post" action="/documents/upload" enctype="multipart/form-data" style="margin-top:0.75rem">
+            <label class="field">
+                <span class="field-label">Müşteri *</span>
+                <select name="client_id" required>
+                    <option value="">— Müşteri seçin —</option>
+                    {% for c in clients %}
+                    <option value="{{ c.id }}" {% if selected_client and selected_client.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Belge türü</span>
+                <select name="document_type">
+                    {% for t in document_types %}
+                    <option value="{{ t }}">{{ TYPE_LABELS.get(t, t) }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Dönem (YYYY-MM, opsiyonel)</span>
+                <input type="text" name="period" placeholder="2026-05">
+            </label>
+            <label class="field">
+                <span class="field-label">Dosya *</span>
+                <input type="file" name="file" required>
+            </label>
+            <label class="checkbox-field">
+                <input type="checkbox" name="visible_to_client" value="1">
+                Müşteri portalında görünür olsun
+            </label>
+            <button type="submit" class="button">Yükle</button>
+        </form>
+    </div>
+
+    <div class="card" style="padding:0">
+        <div style="padding:1.25rem 1.25rem 0">
+            <h2>{{ documents | length }} belge</h2>
+        </div>
+        {% if documents %}
+        <table class="data" style="margin-top:0.75rem">
+            <thead>
+                <tr>
+                    <th>İsim</th>
+                    <th>Müşteri</th>
+                    <th>Tür</th>
+                    <th>Dönem</th>
+                    <th>Boyut</th>
+                    <th>Müşteri Görünürlüğü</th>
+                    <th>Yüklendi</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for d in documents %}
+                <tr>
+                    <td><a href="/documents/{{ d.id }}/download">{{ d.name }}</a></td>
+                    <td>{{ d.client.name }}</td>
+                    <td>{{ TYPE_LABELS.get(d.document_type, d.document_type) }}</td>
+                    <td>{{ period_tr(d.period) if d.period else '—' }}</td>
+                    <td>{{ (d.size_bytes / 1024) | round(1) }} KB</td>
+                    <td>
+                        <form method="post" action="/documents/{{ d.id }}/toggle-visibility" style="margin:0">
+                            <button type="submit" class="button ghost sm">
+                                {% if d.visible_to_client %}<span class="badge done">Görünür</span>{% else %}<span class="badge pending">Gizli</span>{% endif %}
+                            </button>
+                        </form>
+                    </td>
+                    <td class="muted">{{ date_tr(d.created_at) }}</td>
+                    <td>
+                        <form method="post" action="/documents/{{ d.id }}/delete" style="margin:0">
+                            <button type="submit" class="button ghost sm">×</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state" style="border:none">Henüz belge yok.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

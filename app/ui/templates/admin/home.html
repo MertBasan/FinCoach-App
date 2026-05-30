@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Yönetim · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>🛡️ Platform yönetimi</h1>
+        <p class="subtitle">FinCoach'taki tüm firmalar</p>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Toplam firma</div>
+        <div class="stat-value">{{ total_firms }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Toplam kullanıcı</div>
+        <div class="stat-value">{{ total_users }}</div>
+    </div>
+</div>
+
+<div class="card" style="padding:0">
+{% if firm_summaries %}
+<table class="data">
+    <thead>
+        <tr><th>Firma</th><th>Müşteri</th><th>Kullanıcı</th><th>Oluşturulma</th></tr>
+    </thead>
+    <tbody>
+    {% for s in firm_summaries %}
+        <tr>
+            <td><strong>{{ s.firm.name }}</strong></td>
+            <td>{{ s.clients }}</td>
+            <td>{{ s.users }}</td>
+            <td class="muted">{{ date_tr(s.firm.created_at) }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">Henüz kayıtlı firma yok.</div>
+{% endif %}
+</div>
+{% endblock %}

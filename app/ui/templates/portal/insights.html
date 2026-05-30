@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Mali Görünüm · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>📈 Mali Görünümünüz</h1>
+        <p class="subtitle">
+            {% if period %}{{ period_tr(year=period.year, month=period.month) }} · {% endif %}{{ client.base_currency }}
+        </p>
+    </div>
+    <a href="/portal" class="button ghost">← Portal</a>
+</div>
+
+{% if not period or not kpis %}
+<div class="card">
+    <h2>Rakamlar henüz hazır değil</h2>
+    <p class="subtitle" style="margin:0.5rem 0 1rem">
+        Muhasebeciniz henüz hiçbir işlemi onaylamadı. Onaylandığında rakamlarınız burada görünecek.
+    </p>
+    <div class="banner warning">
+        Gösterilecek bir şey yok. Bir sonraki ay sonu kapanışından sonra tekrar kontrol edin.
+    </div>
+</div>
+{% else %}
+
+<div class="banner">
+    Bu rakamlar doğrudan muhasebecinizin incelediği ve onayladığı işlemlerden gelir.
+    Henüz taslak halindeki kayıtları içermez.
+</div>
+
+<div class="stats-row">
+    <div class="card stat-card">
+        <div class="card-title">Hasılat</div>
+        <div class="stat-value">{{ money(kpis.revenue) }}</div>
+        <div class="stat-sub">Bu ay gelen para</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Net Kâr</div>
+        <div class="stat-value" style="{% if kpis.net_profit >= 0 %}color:var(--success){% else %}color:var(--danger){% endif %}">
+            {{ money(kpis.net_profit) }}
+        </div>
+        <div class="stat-sub">
+            {% if kpis.net_profit >= 0 %}Kâr ettiniz{% else %}Kazandığınızdan fazla harcadınız{% endif %}
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">Brüt Kâr Marjı</div>
+        <div class="stat-value">
+            {% if kpis.gross_margin_pct is none %}—{% else %}{{ percent_tr(kpis.gross_margin_pct) }}{% endif %}
+        </div>
+        <div class="stat-sub">Her satıştan kalan kâr</div>
+    </div>
+    <div class="card stat-card">
+        <div class="card-title">İşlemler</div>
+        <div class="stat-value">{{ kpis.transaction_count }}</div>
+        <div class="stat-sub">Bu ay defterinizde</div>
+    </div>
+</div>
+
+<div class="cols-2">
+    <div class="card">
+        <h2>Bu ay nakit</h2>
+        <table class="data" style="margin-top:0.75rem">
+            <tbody>
+                <tr>
+                    <td>Gelen para</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--success)">{{ money(cash.inflows, sign=True) }}</td>
+                </tr>
+                <tr>
+                    <td>Çıkan para</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--danger)">−{{ money(cash.outflows) }}</td>
+                </tr>
+                <tr style="background:var(--accent-soft)">
+                    <td><strong>Net Değişim</strong></td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(cash.net_change) }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Paranız nereye gitti?</h2>
+        {% if kpis.top_expense_lines %}
+        <table class="data" style="margin-top:0.75rem">
+            <tbody>
+            {% for line in kpis.top_expense_lines %}
+                <tr>
+                    <td>{{ line.account_name }}</td>
+                    <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(line.total) }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <p class="muted" style="font-size:0.78rem;margin-top:0.75rem">En yüksek 3 gider kategorisi.</p>
+        {% else %}<p class="muted">Bu dönemde sınıflandırılmış gider yok.</p>{% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:1rem">
+    <h2>Gelir Tablosu</h2>
+    <table class="data" style="margin-top:0.75rem">
+        <tbody>
+            <tr>
+                <td>Hasılat</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums">{{ money(pl.revenue) }}</td>
+            </tr>
+            <tr>
+                <td>Satılan Malın Maliyeti (SMM)</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums">({{ money(pl.cost_of_sales) }})</td>
+            </tr>
+            <tr style="background:var(--line-soft)">
+                <td><strong>Brüt Kâr</strong></td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(pl.gross_profit) }}</strong></td>
+            </tr>
+            <tr>
+                <td>Faaliyet Giderleri</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums">({{ money(pl.operating_expenses) }})</td>
+            </tr>
+            <tr style="background:var(--accent-soft)">
+                <td><strong>Net Kâr</strong></td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>{{ money(pl.net_profit) }}</strong></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<p class="muted" style="font-size:0.78rem;margin-top:1rem">
+    Sorularınız mı var? <a href="/portal/assistant">AI Asistanına sorun</a> ya da doğrudan muhasebecinize ulaşın.
+</p>
+{% endif %}
+{% endblock %}

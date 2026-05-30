@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Müşteriler · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Müşteriler</h1>
+        <p class="subtitle">{{ user.firm.name }} tarafından yönetilen {{ clients | length }} müşteri</p>
+    </div>
+    <a class="button" href="/clients/new">+ Yeni Müşteri</a>
+</div>
+
+<div class="card" style="padding:0">
+{% if clients %}
+<table class="data">
+    <thead>
+        <tr>
+            <th>İsim</th>
+            <th>Sektör</th>
+            <th>VKN</th>
+            <th>Konum</th>
+            <th>Para Birimi</th>
+            <th>Gönderim Günü</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for c in clients %}
+        <tr>
+            <td><a href="/clients/{{ c.id }}"><strong>{{ c.name }}</strong></a></td>
+            <td>{{ c.industry or '—' }}</td>
+            <td>{{ c.vkn or '—' }}</td>
+            <td>
+                {% if c.city or c.country_code %}
+                    {{ c.city or '' }}{% if c.city and c.country_code %}, {% endif %}{{ countries.get(c.country_code, '') }}
+                {% else %}—{% endif %}
+            </td>
+            <td>{{ c.base_currency }}</td>
+            <td>{{ c.submission_day_of_month }}. gün</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>Henüz müşteri yok.</p>
+    <a href="/clients/new" class="button">İlk müşterinizi ekleyin</a>
+</div>
+{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Hizmetler · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Hizmetler</h1>
+        <p class="subtitle">{{ total }} hizmetten {{ available }} tanesi şu an aktif. Diğerleri aşamalı olarak açılıyor.</p>
+    </div>
+</div>
+
+{% for cat, items in by_category.items() %}
+<h2 style="margin:1.5rem 0 0.75rem">{{ cat }}</h2>
+<div class="service-grid">
+    {% for s in items %}
+    {% if s.status == 'available' and s.url %}
+        <a class="service-card available" href="{{ s.url }}">
+    {% elif s.status == 'available' %}
+        <a class="service-card available" href="/clients">
+    {% else %}
+        <a class="service-card coming_soon" href="#" onclick="return false">
+    {% endif %}
+        <div class="service-icon">{{ s.icon }}</div>
+        <div class="service-name">{{ s.name }}</div>
+        <div class="service-short">{{ s.short }}</div>
+        <div class="service-footer">
+            <span class="badge {{ s.status }}">
+                {% if s.status == 'available' %}Hazır{% else %}Çok Yakında{% endif %}
+            </span>
+            {% if s.status == 'available' and s.url %}
+                <span style="color:var(--accent);font-size:0.8rem">Aç →</span>
+            {% elif s.status == 'available' %}
+                <span style="color:var(--accent);font-size:0.8rem">Müşteri başına →</span>
+            {% endif %}
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Giriş Yap · FinCoach{% endblock %}
+{% block content %}
+<div class="form-card auth-card-wrap">
+    <div class="brand" style="justify-content:center;margin-bottom:1rem">
+        <span class="brand-mark">FC</span>
+        <span class="brand-name" style="font-size:1.1rem">FinCoach</span>
+    </div>
+    <h1>Giriş Yap</h1>
+    <p class="muted">Mali müşavirler için iş akışı otomasyonu</p>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post" action="/login">
+        <label class="field">
+            <span class="field-label">E-posta</span>
+            <input type="email" name="email" required autofocus>
+        </label>
+        <label class="field">
+            <span class="field-label">Parola</span>
+            <input type="password" name="password" required>
+        </label>
+        <button type="submit" class="button">Giriş Yap</button>
+    </form>
+    <p class="auth-footer">Hesabınız yok mu? <a href="/register">Firmanızı kaydedin</a>.</p>
+</div>
+{% endblock %}
