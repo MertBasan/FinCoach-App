@@ -29,7 +29,7 @@ Open <http://localhost:8000>.
 
 ## Demo logins
 
-All passwords: **`demo1234`**
+All passwords: Request more info at mertbsn@gmail.com 
 
 | Role | Email | Lands at |
 | --- | --- | --- |
