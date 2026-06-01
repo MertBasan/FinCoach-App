@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Denetim Günlüğü · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Denetim Günlüğü</h1>
+        <p class="subtitle">{{ user.firm.name }}</p>
+    </div>
+    <a href="/manage/users" class="button ghost">← Kullanıcı Yönetimi</a>
+</div>
+
+<div class="card" style="padding:0">
+{% if entries %}
+<table class="data">
+    <thead>
+        <tr>
+            <th>Tarih</th>
+            <th>Yapan</th>
+            <th>İşlem</th>
+            <th>Hedef</th>
+            <th>Detay</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for e in entries %}
+    <tr>
+        <td class="muted" style="white-space:nowrap">{{ date_tr(e.created_at) }}</td>
+        <td>{{ e.actor.name if e.actor else '—' }}</td>
+        <td><span class="badge">{{ action_labels.get(e.action, e.action) }}</span></td>
+        <td>{{ e.target.name if e.target else '—' }}</td>
+        <td class="muted" style="font-size:0.82rem">
+            {% if e.details %}
+                {% for k, v in e.details.items() %}{{ k }}: {{ v }}{% if not loop.last %}, {% endif %}{% endfor %}
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">Henüz denetim kaydı yok.</div>
+{% endif %}
+</div>
+{% endblock %}

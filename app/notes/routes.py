@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.db.models import Note, User, Client
 from app.auth.dependencies import require_accountant
+from app.clients.scope import visible_clients_for
 from app.ui.templates import templates
 
 
@@ -20,7 +21,7 @@ def list_notes(
     user: User = Depends(require_accountant),
 ):
     rows = db.scalars(select(Note).order_by(Note.updated_at.desc())).all()
-    clients = db.scalars(select(Client).order_by(Client.name)).all()
+    clients = db.scalars(visible_clients_for(user, db).order_by(Client.name)).all()
     return templates.TemplateResponse(
         request, "notes/list.html",
         {"user": user, "notes": rows, "clients": clients},

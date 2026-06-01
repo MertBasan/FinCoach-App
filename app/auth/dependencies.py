@@ -26,9 +26,10 @@ def get_current_user(
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session no longer valid")
 
-    # Set RLS context. Superusers don't have a firm; they bypass RLS by
-    # operating without a firm_id setting (and only the /admin routes
-    # work for them).
+    # Phase 3: reject disabled users on every authenticated request
+    if not user.is_active:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Hesabınız devre dışı bırakıldı")
+
     if user.firm_id:
         set_firm_context(db, str(user.firm_id))
     else:
@@ -63,6 +64,15 @@ def require_client(user: User = Depends(get_current_user)) -> User:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Client access required")
     if not user.client_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Client user has no client linked")
+    return user
+
+
+def require_firm_admin(user: User = Depends(require_accountant)) -> User:
+    """Requires the current user to be a firm admin (is_firm_admin=True).
+    Admins remain accountants — this is an additional check on top of
+    require_accountant, not a separate role."""
+    if not user.is_firm_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Firma yöneticisi yetkisi gereklidir")
     return user
 
 

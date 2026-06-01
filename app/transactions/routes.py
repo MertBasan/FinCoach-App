@@ -19,6 +19,7 @@ from app.db.models import (
     User, Client, Transaction, Account, AccountingPeriod,
 )
 from app.auth.dependencies import require_accountant
+from app.clients.scope import get_visible_client_or_404
 from app.spine.periods import parse_period_str
 from app.ui.templates import templates
 
@@ -73,9 +74,7 @@ def review_transactions(
     db: Session = Depends(get_db),
     user: User = Depends(require_accountant),
 ):
-    client = db.get(Client, client_id)
-    if not client:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Client not found")
+    client = get_visible_client_or_404(client_id, user, db)
 
     current_p = _resolve_period(db, client_id, period)
 

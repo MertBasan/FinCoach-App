@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Görev Oluştur · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Görev Oluştur</h1>
+        <p class="subtitle">Müşteri için özel görev ekle</p>
+    </div>
+    <a href="/tasks" class="button ghost">← Panoya Dön</a>
+</div>
+
+<div class="card" style="max-width:560px">
+    <form method="post" action="/tasks/new">
+        <div class="form-group">
+            <label class="form-label">Görev Başlığı *</label>
+            <input class="form-input" name="title" required placeholder="Görev başlığı girin">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Müşteri *</label>
+            <select class="form-input" name="client_id" required>
+                <option value="">— Seçin —</option>
+                {% for c in clients %}
+                <option value="{{ c.id }}" {% if pre_client_id and pre_client_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Vade Tarihi *</label>
+            <input class="form-input" name="due_date" type="date" required
+                value="{{ today.isoformat() }}">
+        </div>
+        {% if assignable_users %}
+        <div class="form-group">
+            <label class="form-label">Atanan Kişi</label>
+            <select class="form-input" name="assigned_to">
+                <option value="">— Atanmamış —</option>
+                {% for u in assignable_users %}
+                <option value="{{ u.id }}">{{ u.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="form-group">
+            <label class="form-label">Açıklama</label>
+            <textarea class="form-input" name="notes" rows="3" placeholder="İsteğe bağlı not"></textarea>
+        </div>
+        <div class="row-gap">
+            <button class="button" type="submit">Görev Oluştur</button>
+            <a href="/tasks" class="button ghost">İptal</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

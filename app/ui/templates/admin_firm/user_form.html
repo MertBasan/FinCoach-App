@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{% if edit_user %}Kullanıcı Düzenle{% else %}Kullanıcı Ekle{% endif %} · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% if edit_user %}{{ edit_user.name }}{% else %}Kullanıcı Ekle{% endif %}</h1>
+        <p class="subtitle">Firma: {{ user.firm.name }}</p>
+    </div>
+    <a href="/manage/users" class="button ghost">← Kullanıcı Listesi</a>
+</div>
+
+{% if error %}
+<div class="banner" style="background:var(--danger-soft);color:var(--danger)">{{ error }}</div>
+{% endif %}
+
+<div class="card" style="max-width:520px">
+    <form method="post" action="{% if edit_user %}/manage/users/{{ edit_user.id }}/edit{% else %}/manage/users/new{% endif %}">
+        <div class="form-group">
+            <label class="form-label">Ad Soyad *</label>
+            <input class="form-input" name="name" required
+                value="{{ edit_user.name if edit_user else '' }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">E-posta *</label>
+            <input class="form-input" name="email" type="email" required
+                value="{{ edit_user.email if edit_user else '' }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">{% if edit_user %}Yeni Şifre (boş bırakırsanız değişmez){% else %}Şifre * (min. 8 karakter){% endif %}</label>
+            <input class="form-input" name="{% if edit_user %}new_password{% else %}password{% endif %}"
+                type="password" {% if not edit_user %}required minlength="8"{% endif %}>
+        </div>
+        {% if not edit_user %}
+        <div class="form-group">
+            <label class="form-label">Rol *</label>
+            <select class="form-input" name="role">
+                <option value="accountant">Muhasebeci</option>
+                <option value="client">Müşteri (portal erişimi)</option>
+            </select>
+        </div>
+        <div class="form-group" id="client-link-group">
+            <label class="form-label">Müşteri kaydıyla ilişkilendir (müşteri rolü için)</label>
+            <select class="form-input" name="client_id">
+                <option value="">— Seçin —</option>
+                {% for c in clients %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="row-gap" style="margin-top:1rem">
+            <button class="button" type="submit">{% if edit_user %}Kaydet{% else %}Kullanıcı Ekle{% endif %}</button>
+            <a href="/manage/users" class="button ghost">İptal</a>
+        </div>
+    </form>
+</div>
+
+{% if edit_user and edit_user.role == 'accountant' and assigned_clients %}
+<div class="card" style="max-width:520px;margin-top:1rem">
+    <h2>Atanan Müşteriler</h2>
+    <ul style="list-style:none;padding:0;margin-top:0.5rem">
+    {% for c in assigned_clients %}
+        <li style="padding:0.4rem 0;border-bottom:1px solid var(--line-soft)">
+            <a href="/clients/{{ c.id }}">{{ c.name }}</a>
+        </li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}
+{% endblock %}

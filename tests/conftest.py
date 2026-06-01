@@ -26,6 +26,10 @@ RLS_TABLES = [
     "accounts",
     "accounting_periods",
     "transactions",
+    # Phase 3 additions
+    "client_assignments",
+    "admin_audit_log",
+    "period_snapshots",
 ]
 
 

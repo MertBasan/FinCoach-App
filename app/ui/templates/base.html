@@ -29,6 +29,11 @@
             <span class="icon">🛡️</span><span class="label">Yönetim</span>
         </a>
         {% endif %}
+        {% if user.is_firm_admin %}
+        <a href="/manage/users" class="navlink {% if request.url.path.startswith('/manage') %}active{% endif %}">
+            <span class="icon">👥</span><span class="label">Kullanıcı Yönetimi</span>
+        </a>
+        {% endif %}
         <a href="/" class="navlink {% if request.url.path == '/' %}active{% endif %}">
             <span class="icon">📊</span><span class="label">Pano</span>
         </a>
@@ -52,7 +57,7 @@
         <div class="user-card">
             <div class="user-avatar">{{ user.name[0] | upper }}</div>
             <div class="user-meta">
-                <div class="user-name">{{ user.name }}</div>
+                <div class="user-name">{{ user.name }}{% if user.is_firm_admin %} <span style="font-size:0.7rem;opacity:0.7">Yönetici</span>{% endif %}</div>
                 <div class="user-firm">{{ user.firm.name if user.firm else 'Platform' }}</div>
             </div>
         </div>

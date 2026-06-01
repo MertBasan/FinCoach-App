@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Dönem Özeti · {{ period_tr(year=period.year, month=period.month) }} · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Dönem Özeti — {{ period_tr(year=period.year, month=period.month) }}</h1>
+        <p class="subtitle"><a href="/clients/{{ client.id }}">{{ client.name }}</a></p>
+    </div>
+    <div class="row-gap">
+        <a href="/clients/{{ client.id }}/snapshots" class="button ghost">← Tüm Dönemler</a>
+        {% if snapshot and snapshot.approval_status != 'approved' %}
+        <form method="post" action="/clients/{{ client.id }}/snapshots/{{ period.id }}/approve">
+            <button class="button" type="submit">Onayla</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if request.query_params.get('import_stub') %}
+<div class="banner">
+    Dosyadan İçe Aktar — Yakında: Şimdilik aşağıya toplamları manuel olarak girin.
+</div>
+{% endif %}
+
+{% if snapshot and snapshot.approval_status == 'approved' %}
+<div class="banner" style="background:var(--success-soft,#e8f5e9);color:var(--success,#2e7d32)">
+    Bu dönem onaylandı. Düzenlemek için tekrar giriş yapabilirsiniz, ancak onay durumu sıfırlanır.
+</div>
+{% endif %}
+
+<form method="post" action="/clients/{{ client.id }}/snapshots/{{ period.id }}">
+
+<div class="cols-2">
+    <div class="card">
+        <h2>Kaynak</h2>
+        <div class="form-group" style="margin-top:0.75rem">
+            <label class="form-label">Kaynak</label>
+            <select class="form-input" name="source">
+                {% for val, label in source_labels.items() %}
+                <option value="{{ val }}" {% if snapshot and snapshot.source == val %}selected{% elif not snapshot and val == 'manual' %}selected{% endif %}>
+                    {{ label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Notlar</label>
+            <textarea class="form-input" name="notes" rows="3">{{ snapshot.notes if snapshot and snapshot.notes else '' }}</textarea>
+        </div>
+        <button class="button ghost sm" type="button"
+            onclick="alert('Dosyadan içe aktarma özelliği yakında eklenecek. Şimdilik toplamları manuel olarak girin.')">
+            Dosyadan İçe Aktar
+        </button>
+    </div>
+    <div class="card">
+        <h2>Gelir Tablosu</h2>
+        <div style="display:grid;gap:0.5rem;margin-top:0.75rem">
+            {% macro field(label, fname) %}
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label" style="font-size:0.82rem">{{ label }}</label>
+                <input class="form-input" name="{{ fname }}" type="text" inputmode="decimal"
+                    placeholder="0,00"
+                    value="{{ snapshot|attr(fname) if snapshot and snapshot|attr(fname) is not none else '' }}">
+            </div>
+            {% endmacro %}
+            {{ field('Hasılat', 'revenue') }}
+            {{ field('Satılan Malın Maliyeti (SMM)', 'cogs') }}
+            {{ field('Brüt Kâr', 'gross_profit') }}
+            {{ field('Faaliyet Giderleri', 'operating_expenses') }}
+            {{ field('Net Kâr', 'net_profit') }}
+        </div>
+    </div>
+</div>
+
+<div class="cols-2" style="margin-top:1rem">
+    <div class="card">
+        <h2>Nakit Akışı</h2>
+        <div style="display:grid;gap:0.5rem;margin-top:0.75rem">
+            {% macro cf(label, fname) %}
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label" style="font-size:0.82rem">{{ label }}</label>
+                <input class="form-input" name="{{ fname }}" type="text" inputmode="decimal"
+                    placeholder="0,00"
+                    value="{{ snapshot|attr(fname) if snapshot and snapshot|attr(fname) is not none else '' }}">
+            </div>
+            {% endmacro %}
+            {{ cf('Açılış Nakit Bakiyesi', 'cash_balance_opening') }}
+            {{ cf('Kapanış Nakit Bakiyesi', 'cash_balance_closing') }}
+            {{ cf('Nakit Girişleri', 'cash_inflows') }}
+            {{ cf('Nakit Çıkışları', 'cash_outflows') }}
+        </div>
+    </div>
+    <div class="card">
+        <h2>Diğer</h2>
+        <div style="display:grid;gap:0.5rem;margin-top:0.75rem">
+            {% macro oth(label, fname) %}
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label" style="font-size:0.82rem">{{ label }}</label>
+                <input class="form-input" name="{{ fname }}" type="text" inputmode="decimal"
+                    placeholder="0,00"
+                    value="{{ snapshot|attr(fname) if snapshot and snapshot|attr(fname) is not none else '' }}">
+            </div>
+            {% endmacro %}
+            {{ oth('Alacaklar Toplamı', 'ar_total') }}
+            {{ oth('Borçlar Toplamı', 'ap_total') }}
+            {{ oth('KDV Girdi', 'vat_input') }}
+            {{ oth('KDV Çıktı', 'vat_output') }}
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top:1rem">
+    <h2>Gider Dağılımı</h2>
+    <p class="muted" style="font-size:0.85rem;margin-top:0.25rem">
+        Gider kategorilerini ve tutarlarını girin.
+    </p>
+    <div id="expense-rows" style="margin-top:0.75rem;display:grid;gap:0.5rem">
+        {% for name, amount in expense_rows %}
+        <div class="row-gap expense-row">
+            <input class="form-input" name="expense_key" placeholder="Kategori adı" value="{{ name }}" style="flex:2">
+            <input class="form-input" name="expense_value" placeholder="Tutar" value="{{ amount }}" type="text" inputmode="decimal" style="flex:1">
+            <button type="button" class="button ghost sm" onclick="this.closest('.expense-row').remove()">×</button>
+        </div>
+        {% endfor %}
+    </div>
+    <button type="button" class="button ghost sm" style="margin-top:0.5rem"
+        onclick="addExpenseRow()">+ Satır Ekle</button>
+</div>
+
+<div class="row-gap" style="margin-top:1.5rem">
+    <button class="button" type="submit">Kaydet</button>
+    <a href="/clients/{{ client.id }}/snapshots" class="button ghost">İptal</a>
+</div>
+</form>
+
+<script>
+function addExpenseRow() {
+    const row = document.createElement('div');
+    row.className = 'row-gap expense-row';
+    row.innerHTML = '<input class="form-input" name="expense_key" placeholder="Kategori adı" style="flex:2">'
+        + '<input class="form-input" name="expense_value" placeholder="Tutar" type="text" inputmode="decimal" style="flex:1">'
+        + '<button type="button" class="button ghost sm" onclick="this.closest(\'.expense-row\').remove()">×</button>';
+    document.getElementById('expense-rows').appendChild(row);
+}
+</script>
+{% endblock %}

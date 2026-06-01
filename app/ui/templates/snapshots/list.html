@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Dönem Özetleri · {{ client.name }} · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Dönem Özetleri</h1>
+        <p class="subtitle"><a href="/clients/{{ client.id }}">{{ client.name }}</a></p>
+    </div>
+    <a href="/clients/{{ client.id }}" class="button ghost">← Müşteri Detayı</a>
+</div>
+
+<div class="banner">
+    Dönem özetleri ETASQL, Logo, Mikro, Netsis gibi harici sistemlerden ya da manuel girişten gelen toplam
+    verileri tutar. Onaylanmış bir özet varsa raporlar işlem tabanlı hesaplar yerine bu verileri kullanır.
+</div>
+
+<div class="card" style="padding:0">
+{% if periods %}
+<table class="data">
+    <thead>
+        <tr>
+            <th>Dönem</th>
+            <th>Kaynak</th>
+            <th>Durum</th>
+            <th>Hasılat</th>
+            <th>Net Kâr</th>
+            <th>İşlemler</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for p in periods %}
+    {% set snap = snapshots_by_period.get(p.id) %}
+    <tr>
+        <td><strong>{{ period_tr(year=p.year, month=p.month) }}</strong></td>
+        <td>
+            {% if snap %}{{ source_labels.get(snap.source, snap.source) }}{% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td>
+            {% if snap %}
+                {% if snap.approval_status == 'approved' %}
+                    <span class="badge done">Onaylandı</span>
+                {% else %}
+                    <span class="badge pending">Onay Bekliyor</span>
+                {% endif %}
+            {% else %}
+                <span class="muted">Özet yok</span>
+            {% endif %}
+        </td>
+        <td>{% if snap and snap.revenue is not none %}{{ money(snap.revenue) }}{% else %}—{% endif %}</td>
+        <td>{% if snap and snap.net_profit is not none %}{{ money(snap.net_profit) }}{% else %}—{% endif %}</td>
+        <td>
+            <div class="row-gap">
+                <a href="/clients/{{ client.id }}/snapshots/{{ p.id }}" class="button ghost sm">
+                    {% if snap %}Düzenle{% else %}Giriş Yap{% endif %}
+                </a>
+                {% if snap and snap.approval_status != 'approved' %}
+                <form method="post" action="/clients/{{ client.id }}/snapshots/{{ p.id }}/approve">
+                    <button class="button sm" type="submit"
+                        onclick="return confirm('Bu dönemi onaylıyor musunuz?')">Onayla</button>
+                </form>
+                {% endif %}
+            </div>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">Bu müşteri için henüz muhasebe dönemi yok.</div>
+{% endif %}
+</div>
+{% endblock %}

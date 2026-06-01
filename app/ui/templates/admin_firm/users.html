@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Kullanıcı Yönetimi · FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Kullanıcı Yönetimi</h1>
+        <p class="subtitle">{{ user.firm.name }}</p>
+    </div>
+    <div class="row-gap">
+        <a href="/manage/users/new" class="button">+ Kullanıcı Ekle</a>
+        <a href="/manage/audit" class="button ghost">Denetim Günlüğü</a>
+    </div>
+</div>
+
+<div class="card" style="padding:0">
+{% if firm_users %}
+<table class="data">
+    <thead>
+        <tr>
+            <th>Ad</th>
+            <th>E-posta</th>
+            <th>Rol</th>
+            <th>Durum</th>
+            <th>Atanan Müşteriler</th>
+            <th>İşlemler</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for u in firm_users %}
+    <tr>
+        <td>
+            <strong>{{ u.name }}</strong>
+            {% if u.is_firm_admin %}<span class="badge" style="font-size:0.7rem;margin-left:4px">Yönetici</span>{% endif %}
+        </td>
+        <td>{{ u.email }}</td>
+        <td>
+            {% if u.role == 'accountant' %}Muhasebeci{% elif u.role == 'client' %}Müşteri{% else %}{{ u.role }}{% endif %}
+        </td>
+        <td>
+            {% if u.is_active %}
+                <span class="badge done">Aktif</span>
+            {% else %}
+                <span class="badge overdue">Pasif</span>
+            {% endif %}
+        </td>
+        <td>
+            {% if u.role == 'accountant' %}
+                {% set clients = assignments_by_user.get(u.id, []) %}
+                {% if clients %}
+                    {{ clients | map(attribute='name') | join(', ') | truncate(60) }}
+                {% else %}
+                    <span class="muted">—</span>
+                {% endif %}
+            {% else %}
+                <span class="muted">—</span>
+            {% endif %}
+        </td>
+        <td>
+            <div class="row-gap">
+                <a href="/manage/users/{{ u.id }}" class="button ghost sm">Düzenle</a>
+                {% if u.id != user.id %}
+                <form method="post" action="/manage/users/{{ u.id }}/toggle-active" style="display:inline">
+                    <button class="button ghost sm" type="submit"
+                        onclick="return confirm('{{ 'Devre Dışı Bırak' if u.is_active else 'Etkinleştir' }}?')">
+                        {% if u.is_active %}Devre Dışı Bırak{% else %}Etkinleştir{% endif %}
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">Firmada kullanıcı yok.</div>
+{% endif %}
+</div>
+{% endblock %}

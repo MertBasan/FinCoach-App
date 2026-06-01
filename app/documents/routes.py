@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.db.models import Document, Client, User
 from app.auth.dependencies import require_accountant, get_current_user
+from app.clients.scope import visible_clients_for
 from app.ui.templates import templates
 
 
@@ -46,7 +47,7 @@ def list_documents(
         q = q.where(Document.client_id == cid)
         selected_client = db.get(Client, cid)
     rows = db.scalars(q).all()
-    clients = db.scalars(select(Client).order_by(Client.name)).all()
+    clients = db.scalars(visible_clients_for(user, db).order_by(Client.name)).all()
     return templates.TemplateResponse(
         request, "documents/list.html",
         {

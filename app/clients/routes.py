@@ -6,8 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.db.models import Client, User, ClientMonthlyTask, Document, Note
+from app.db.models import (
+    Client, User, ClientMonthlyTask, Document, Note,
+    ClientAssignment, AdminAuditLog,
+)
 from app.auth.dependencies import require_accountant
+from app.clients.scope import visible_clients_for, get_visible_client_or_404
 from app.reference import CURRENCIES, COUNTRIES
 from app.ui.templates import templates
 from app.tasks.workflow import current_period, generate_tasks_for_client_period
@@ -23,7 +27,9 @@ def list_clients(
     db: Session = Depends(get_db),
     user: User = Depends(require_accountant),
 ):
-    rows = db.scalars(select(Client).order_by(Client.name)).all()
+    rows = db.scalars(
+        visible_clients_for(user, db).order_by(Client.name)
+    ).all()
     return templates.TemplateResponse(
         request, "clients/list.html",
         {"user": user, "clients": rows, "countries": dict(COUNTRIES)},
@@ -63,10 +69,7 @@ def create_client(
     vkn_clean = clean_tax_id(vkn) if vkn.strip() else ""
     tckn_clean = clean_tax_id(tckn) if tckn.strip() else ""
     if vkn_clean and not validate_vkn(vkn_clean):
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "VKN 10 haneli sayı olmalıdır.",
-        )
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "VKN 10 haneli sayı olmalıdır.")
     if tckn_clean and not validate_tckn(tckn_clean):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
@@ -89,10 +92,17 @@ def create_client(
     )
     db.add(client)
     db.flush()
-    # Seed the default Turkish TDHP chart of accounts for this client
     seed_default_coa(db, user.firm_id, client.id)
-    # Auto-generate this month's tasks for the new client
     generate_tasks_for_client_period(db, user.firm_id, client.id, current_period())
+
+    # Auto-assign the creating accountant to the new client
+    db.add(ClientAssignment(
+        firm_id=user.firm_id,
+        client_id=client.id,
+        user_id=user.id,
+        assigned_by=user.id,
+    ))
+
     db.commit()
     return RedirectResponse(f"/clients/{client.id}", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -104,9 +114,7 @@ def client_detail(
     db: Session = Depends(get_db),
     user: User = Depends(require_accountant),
 ):
-    client = db.get(Client, client_id)
-    if not client:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    client = get_visible_client_or_404(client_id, user, db)
 
     period = current_period()
     tasks = db.scalars(
@@ -133,6 +141,24 @@ def client_detail(
 
     country_name = dict(COUNTRIES).get(client.country_code) if client.country_code else None
 
+    # Phase 3: assignments (firm admins only)
+    assigned_users = []
+    all_accountants = []
+    assigned_user_ids = set()
+    if user.is_firm_admin:
+        assignments = db.scalars(
+            select(ClientAssignment).where(ClientAssignment.client_id == client_id)
+        ).all()
+        assigned_users = [a.user for a in assignments if a.user]
+        assigned_user_ids = {a.user_id for a in assignments}
+        all_accountants = db.scalars(
+            select(User)
+            .where(User.firm_id == user.firm_id)
+            .where(User.role == "accountant")
+            .where(User.is_active.is_(True))
+            .order_by(User.name)
+        ).all()
+
     return templates.TemplateResponse(
         request, "clients/detail.html",
         {
@@ -141,5 +167,62 @@ def client_detail(
             "total": total, "done": done, "pct": pct,
             "country_name": country_name,
             "period": period,
+            "assigned_users": assigned_users,
+            "all_accountants": all_accountants,
+            "assigned_user_ids": assigned_user_ids,
         },
     )
+
+
+@router.post("/{client_id}/assignments")
+async def update_assignments(
+    client_id: UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_accountant),
+):
+    """Firm admin updates which accountants are assigned to a client."""
+    if not user.is_firm_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Firma yöneticisi yetkisi gereklidir")
+
+    client = get_visible_client_or_404(client_id, user, db)
+
+    form_data = await request.form()
+    new_user_ids = set(UUID(v) for v in form_data.getlist("assigned_user_ids") if v)
+
+    existing = db.scalars(
+        select(ClientAssignment).where(ClientAssignment.client_id == client_id)
+    ).all()
+    existing_by_user = {a.user_id: a for a in existing}
+    existing_ids = set(existing_by_user.keys())
+
+    to_add = new_user_ids - existing_ids
+    to_remove = existing_ids - new_user_ids
+
+    for uid in to_add:
+        db.add(ClientAssignment(
+            firm_id=user.firm_id,
+            client_id=client_id,
+            user_id=uid,
+            assigned_by=user.id,
+        ))
+        db.add(AdminAuditLog(
+            firm_id=user.firm_id,
+            actor_user_id=user.id,
+            target_user_id=uid,
+            action="assign_client",
+            details={"client_id": str(client_id), "client_name": client.name},
+        ))
+
+    for uid in to_remove:
+        db.delete(existing_by_user[uid])
+        db.add(AdminAuditLog(
+            firm_id=user.firm_id,
+            actor_user_id=user.id,
+            target_user_id=uid,
+            action="unassign_client",
+            details={"client_id": str(client_id), "client_name": client.name},
+        ))
+
+    db.commit()
+    return RedirectResponse(f"/clients/{client_id}", status_code=status.HTTP_303_SEE_OTHER)

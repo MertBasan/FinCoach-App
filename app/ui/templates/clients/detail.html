@@ -12,9 +12,11 @@
     </div>
     <div class="row-gap">
         <a href="/clients/{{ client.id }}/reports" class="button">📊 Raporlar</a>
+        <a href="/clients/{{ client.id }}/snapshots" class="button ghost">📥 Dönem Özetleri</a>
         <a href="/clients/{{ client.id }}/transactions" class="button ghost">İşlem İnceleme</a>
         <a href="/documents?client_id={{ client.id }}" class="button ghost">Belgeler</a>
         <a href="/tasks?period={{ period }}" class="button ghost">Görevler</a>
+        <a href="/tasks/new?client_id={{ client.id }}" class="button ghost">+ Görev Oluştur</a>
     </div>
 </div>
 
@@ -65,12 +67,13 @@
         <h2>Bu ayın görevleri ({{ period_tr(period) }})</h2>
         {% if tasks %}
         <table class="data" style="margin-top:0.75rem">
-            <thead><tr><th>Görev</th><th>Vade</th><th>Durum</th></tr></thead>
+            <thead><tr><th>Görev</th><th>Atanan</th><th>Vade</th><th>Durum</th></tr></thead>
             <tbody>
             {% for t in tasks %}
             {% set status_tr = {'pending':'Beklemede','in_progress':'Devam Ediyor','done':'Tamamlandı'}.get(t.status, t.status) %}
             <tr>
                 <td>{{ t.name }}</td>
+                <td>{{ t.assigned_to.name if t.assigned_to else '—' }}</td>
                 <td>{{ date_tr(t.due_date) }}</td>
                 <td><span class="badge {{ t.status }}">{{ status_tr }}</span></td>
             </tr>
@@ -81,7 +84,42 @@
     </div>
 </div>
 
-<div class="cols-2">
+{% if user.is_firm_admin %}
+<div class="card" style="margin-top:1rem">
+    <h2>Atanan Muhasebeciler</h2>
+    <p class="muted" style="margin-top:0.25rem;font-size:0.85rem">
+        Yalnızca atanan muhasebeciler bu müşteriyi görebilir.
+    </p>
+    <form method="post" action="/clients/{{ client.id }}/assignments" style="margin-top:0.75rem">
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem">
+        {% for acct in all_accountants %}
+            <label style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem 0.75rem;border:1px solid var(--line-soft);border-radius:6px;cursor:pointer;{% if acct.id in assigned_user_ids %}background:var(--accent-soft);{% endif %}">
+                <input type="checkbox" name="assigned_user_ids" value="{{ acct.id }}"
+                    {% if acct.id in assigned_user_ids %}checked{% endif %}>
+                {{ acct.name }}{% if not acct.is_active %} <span class="badge" style="font-size:0.7rem">Pasif</span>{% endif %}
+            </label>
+        {% endfor %}
+        {% if not all_accountants %}
+            <p class="muted">Firmada başka muhasebeci yok.</p>
+        {% endif %}
+        </div>
+        <button class="button" type="submit">Atamaları Kaydet</button>
+    </form>
+</div>
+{% else %}
+{% if assigned_users %}
+<div class="card" style="margin-top:1rem">
+    <h2>Atanan Muhasebeciler</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem">
+    {% for u in assigned_users %}
+        <span style="padding:0.3rem 0.6rem;background:var(--accent-soft);border-radius:6px;font-size:0.85rem">{{ u.name }}</span>
+    {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<div class="cols-2" style="margin-top:1rem">
     <div class="card">
         <div class="row-between">
             <h2>Son belgeler</h2>

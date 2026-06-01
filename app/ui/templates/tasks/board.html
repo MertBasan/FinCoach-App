@@ -7,15 +7,16 @@
         <p class="subtitle">{{ period_tr(period) }}</p>
     </div>
     <div class="row-gap">
-        <a href="/tasks?period={{ prev_period }}" class="button ghost">← {{ period_tr(prev_period) }}</a>
+        <a href="/tasks?period={{ prev_period }}&view={{ view }}" class="button ghost">← {{ period_tr(prev_period) }}</a>
         {% if period != current_period %}
-            <a href="/tasks" class="button ghost">Bu Ay</a>
+            <a href="/tasks?view={{ view }}" class="button ghost">Bu Ay</a>
         {% endif %}
-        <a href="/tasks?period={{ next_period_str }}" class="button ghost">{{ period_tr(next_period_str) }} →</a>
+        <a href="/tasks?period={{ next_period_str }}&view={{ view }}" class="button ghost">{{ period_tr(next_period_str) }} →</a>
         <form method="post" action="/tasks/generate" class="task-status-form">
             <input type="hidden" name="period" value="{{ next_period_str }}">
             <button class="button" type="submit">+ {{ period_tr(next_period_str) }} için oluştur</button>
         </form>
+        <a href="/tasks/new" class="button ghost">+ Görev Oluştur</a>
     </div>
 </div>
 
@@ -37,6 +38,15 @@
             {% if overdue == 0 %}Her şey yolunda{% else %}İlgilenilmesi gerekiyor{% endif %}
         </div>
     </div>
+    <div class="card stat-card" style="justify-content:center">
+        {% if view == 'mine' %}
+            <div class="card-title">Görevlerim</div>
+            <a href="/tasks?period={{ period }}&view=all" class="button ghost" style="margin-top:0.5rem">Tüm Görevleri Gör</a>
+        {% else %}
+            <div class="card-title">Tüm Görevler</div>
+            <a href="/tasks?period={{ period }}&view=mine" class="button ghost" style="margin-top:0.5rem">Görevlerim</a>
+        {% endif %}
+    </div>
 </div>
 
 {% if grouped %}
@@ -49,8 +59,9 @@
         <table class="data" style="margin-top:0">
             <thead>
                 <tr>
-                    <th style="width:35%">Görev</th>
+                    <th style="width:30%">Görev</th>
                     <th>Kategori</th>
+                    <th>Atanan Kişi</th>
                     <th>Vade</th>
                     <th>Durum</th>
                     <th>Güncelle</th>
@@ -61,6 +72,7 @@
                 <tr class="task-row {% if t.status != 'done' and t.due_date < today %}overdue{% endif %}">
                     <td>{{ t.name }}</td>
                     <td><span class="badge category">{{ t.category }}</span></td>
+                    <td>{{ t.assigned_to.name if t.assigned_to else '—' }}</td>
                     <td>{{ date_tr(t.due_date) }}</td>
                     <td>
                         {% set status_tr = {'pending':'Beklemede','in_progress':'Devam Ediyor','done':'Tamamlandı'}.get(t.status, t.status) %}
@@ -87,7 +99,9 @@
     {% endfor %}
 {% else %}
     <div class="empty-state">
-        {{ period_tr(period) }} için görev yok.
+        {{ period_tr(period) }} için
+        {% if view == 'mine' %}size atanmış{% endif %}
+        görev yok.
         <div style="margin-top:0.75rem">
             <form method="post" action="/tasks/generate" class="task-status-form">
                 <input type="hidden" name="period" value="{{ period }}">

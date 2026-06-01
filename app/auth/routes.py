@@ -83,12 +83,15 @@ def register(
     from app.db import set_firm_context
     set_firm_context(db, str(firm.id))
 
+    # First user to register a firm becomes firm admin
     user = User(
         firm_id=firm.id,
         email=email,
         name=name.strip(),
         password_hash=hash_password(password),
         role="accountant",
+        is_firm_admin=True,
+        is_active=True,
     )
     db.add(user)
 

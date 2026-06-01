@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.db.models import Client, ClientMonthlyTask, Document, Note, User
 from app.auth.dependencies import require_accountant
+from app.clients.scope import visible_clients_for
 from app.tasks.workflow import current_period, generate_tasks_for_all_clients
 from app.ui.templates import templates
 
@@ -29,10 +30,12 @@ def dashboard(
     generate_tasks_for_all_clients(db, user.firm_id, period)
     db.commit()
 
-    clients = db.scalars(select(Client).order_by(Client.name)).all()
+    clients = db.scalars(visible_clients_for(user, db).order_by(Client.name)).all()
+    visible_client_ids = {c.id for c in clients}
     tasks = db.scalars(
         select(ClientMonthlyTask)
         .where(ClientMonthlyTask.period == period)
+        .where(ClientMonthlyTask.client_id.in_(visible_client_ids))
     ).all()
 
     today = date.today()

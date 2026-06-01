@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.db.models import User, Client, Document
 from app.auth.dependencies import require_accountant
+from app.clients.scope import visible_clients_for
 from app.services.catalog import SERVICES, by_slug
 from app.services.bank_extraction import (
     process_pdf,
@@ -55,7 +56,7 @@ def pdf_extraction_form(
     db: Session = Depends(get_db),
     user: User = Depends(require_accountant),
 ):
-    clients = db.scalars(select(Client).order_by(Client.name)).all()
+    clients = db.scalars(visible_clients_for(user, db).order_by(Client.name)).all()
     return templates.TemplateResponse(
         request, "services/pdf_extraction.html",
         {

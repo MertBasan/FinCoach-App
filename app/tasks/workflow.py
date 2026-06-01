@@ -1,10 +1,12 @@
 """Workflow helpers: generate monthly task lists from templates."""
 from datetime import date
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import (
-    AccountingFirm, Client, TaskTemplate, ClientMonthlyTask,
+    Client, TaskTemplate, ClientMonthlyTask, ClientAssignment,
 )
 
 
@@ -36,8 +38,16 @@ def next_period(period: str) -> str:
 def _due_date_for(period: str, day: int) -> date:
     y, m = period.split("-")
     y, m = int(y), int(m)
-    # cap day to 28 to avoid month-end edge cases
     return date(y, m, min(day, 28))
+
+
+def _get_assigned_accountant_ids(db: Session, client_id: UUID) -> list[UUID]:
+    """Return user IDs of accountants currently assigned to this client."""
+    rows = db.scalars(
+        select(ClientAssignment.user_id)
+        .where(ClientAssignment.client_id == client_id)
+    ).all()
+    return list(rows)
 
 
 def generate_tasks_for_client_period(
@@ -47,34 +57,69 @@ def generate_tasks_for_client_period(
     period: str,
 ) -> int:
     """Generate (or skip if existing) monthly tasks for a client for one period.
-    Returns count of newly created tasks."""
-    existing = db.scalar(
-        select(ClientMonthlyTask.id)
-        .where(ClientMonthlyTask.client_id == client_id)
-        .where(ClientMonthlyTask.period == period)
-        .limit(1)
-    )
-    if existing:
-        return 0
+
+    Phase 3: if the client has assigned accountants, creates one task copy
+    per accountant. If unassigned, creates one unassigned task per template.
+    Idempotent — safe to call multiple times.
+    """
+    accountant_ids = _get_assigned_accountant_ids(db, client_id)
 
     templates = db.scalars(
         select(TaskTemplate)
         .where(TaskTemplate.firm_id == firm_id)
         .where(TaskTemplate.active.is_(True))
     ).all()
+
     created = 0
     for tpl in templates:
-        db.add(ClientMonthlyTask(
-            firm_id=firm_id,
-            client_id=client_id,
-            template_id=tpl.id,
-            name=tpl.name,
-            category=tpl.category,
-            period=period,
-            due_date=_due_date_for(period, tpl.day_of_month),
-            status="pending",
-        ))
-        created += 1
+        due = _due_date_for(period, tpl.day_of_month)
+        if accountant_ids:
+            for acct_id in accountant_ids:
+                # Idempotent: skip if this (template, period, assignee) already exists
+                existing = db.scalar(
+                    select(ClientMonthlyTask.id)
+                    .where(ClientMonthlyTask.template_id == tpl.id)
+                    .where(ClientMonthlyTask.client_id == client_id)
+                    .where(ClientMonthlyTask.period == period)
+                    .where(ClientMonthlyTask.assigned_to_user_id == acct_id)
+                    .limit(1)
+                )
+                if not existing:
+                    db.add(ClientMonthlyTask(
+                        firm_id=firm_id,
+                        client_id=client_id,
+                        template_id=tpl.id,
+                        name=tpl.name,
+                        category=tpl.category,
+                        period=period,
+                        due_date=due,
+                        status="pending",
+                        assigned_to_user_id=acct_id,
+                    ))
+                    created += 1
+        else:
+            # No assignments — one unassigned task per template
+            existing = db.scalar(
+                select(ClientMonthlyTask.id)
+                .where(ClientMonthlyTask.template_id == tpl.id)
+                .where(ClientMonthlyTask.client_id == client_id)
+                .where(ClientMonthlyTask.period == period)
+                .where(ClientMonthlyTask.assigned_to_user_id.is_(None))
+                .limit(1)
+            )
+            if not existing:
+                db.add(ClientMonthlyTask(
+                    firm_id=firm_id,
+                    client_id=client_id,
+                    template_id=tpl.id,
+                    name=tpl.name,
+                    category=tpl.category,
+                    period=period,
+                    due_date=due,
+                    status="pending",
+                    assigned_to_user_id=None,
+                ))
+                created += 1
     return created
 
 

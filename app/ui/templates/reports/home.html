@@ -53,6 +53,13 @@
 </div>
 {% else %}
 
+{% if snapshot_source %}
+<div class="banner" style="background:var(--accent-soft);border-left:4px solid var(--accent)">
+    Bu dönem için harici kaynaktan veri içe aktarıldı: <strong>{{ snapshot_source_label }}</strong>.
+    Raporlar işlem tabanlı değil, dönem özeti verileri kullanılarak hesaplanmıştır.
+    <a href="/clients/{{ client.id }}/snapshots" style="margin-left:0.5rem">Özeti Görüntüle</a>
+</div>
+{% else %}
 <div class="banner">
     Tüm rakamlar <strong>yalnızca onaylanmış işlemlerden</strong> hesaplanır.
     {% if kpis.uncategorised_pct > 0 %}
@@ -60,6 +67,7 @@
         daha keskin dağılım için İnceleme sayfasında kodlayın.
     {% endif %}
 </div>
+{% endif %}
 
 <div class="stats-row">
     <div class="card stat-card">
