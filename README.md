@@ -29,7 +29,7 @@ docker compose exec app python -m scripts.seed_demo
 
 ## Demo girişleri
 
-Tüm parolalar: **`demo1234`**
+Tüm parolalar: **Request info at mertbsn@gmail.com"
 
 | Rol | E-posta | Açılan sayfa |
 | --- | --- | --- |

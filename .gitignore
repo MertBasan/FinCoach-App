@@ -11,3 +11,7 @@ build/
 node_modules/
 .DS_Store
 .env example
+docs/
+CLAUDE.md
+CHANGE_SUMMARY.md
+
