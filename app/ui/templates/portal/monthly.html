@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}İstatistikler · {{ client.name }}{% endblock %}
+{% block content %}
+
+{# ---------- Empty state ---------- #}
+{% if not snapshot %}
+<div class="page-header">
+    <div>
+        <h1>İstatistikler</h1>
+        <p class="subtitle">{{ client.name }}</p>
+    </div>
+</div>
+<div class="card" style="margin-top:2rem;text-align:center;padding:3rem 1rem">
+    <p style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">
+        İstatistikler henüz hazır değil.
+    </p>
+    <p class="muted">
+        Muhasebecin ilk dönem özetini yayınladığında burada görünecek.
+    </p>
+</div>
+{% else %}
+
+{# ---------- Header + month picker ---------- #}
+<div class="page-header">
+    <div>
+        <h1>İstatistikler — {{ period_label }}</h1>
+        <p class="subtitle">{{ client.name }}</p>
+    </div>
+    {% if published_snapshots | length > 1 %}
+    <div>
+        <select class="form-input" style="min-width:160px"
+            onchange="window.location.href='/portal/monthly?period_id='+this.value">
+            {% for snap in published_snapshots %}
+            <option value="{{ snap.period_id }}"
+                {% if snap.period_id == snapshot.period_id %}selected{% endif %}>
+                {{ period_tr(year=snap.period.year, month=snap.period.month) }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+</div>
+
+{# ---------- Accountant note card ---------- #}
+{% if snapshot.accountant_note %}
+<div style="background:#f0f7ff;border-left:4px solid var(--brand,#2563eb);
+            border-radius:6px;padding:1rem 1.25rem;margin-bottom:1.5rem">
+    <p style="margin:0;line-height:1.6">{{ snapshot.accountant_note }}</p>
+</div>
+{% endif %}
+
+{# ---------- KPI summary row ---------- #}
+<div class="stats-row" style="margin-bottom:1.5rem">
+
+    {# Revenue tile #}
+    <div class="card stat-card">
+        <div class="card-title">Hasılat</div>
+        <div class="stat-value">{{ money(snapshot.revenue) }}</div>
+        {% set rev_lbl = comparison.revenue %}
+        {% if rev_lbl.direction == 'up' %}
+            <div class="stat-sub" style="color:var(--success,#2e7d32)">▲ {{ rev_lbl.text }}</div>
+        {% elif rev_lbl.direction == 'down' %}
+            <div class="stat-sub" style="color:var(--danger,#c62828)">▼ {{ rev_lbl.text }}</div>
+        {% elif rev_lbl.direction == 'flat' %}
+            <div class="stat-sub">{{ rev_lbl.text }}</div>
+        {% else %}
+            <div class="stat-sub muted">{{ rev_lbl.text }}</div>
+        {% endif %}
+    </div>
+
+    {# Net profit tile #}
+    <div class="card stat-card">
+        <div class="card-title">Net Kâr</div>
+        <div class="stat-value">{{ money(snapshot.net_profit) }}</div>
+        {% set np_lbl = comparison.net_profit %}
+        {% if np_lbl.direction == 'up' %}
+            <div class="stat-sub" style="color:var(--success,#2e7d32)">▲ {{ np_lbl.text }}</div>
+        {% elif np_lbl.direction == 'down' %}
+            <div class="stat-sub" style="color:var(--danger,#c62828)">▼ {{ np_lbl.text }}</div>
+        {% elif np_lbl.direction == 'flat' %}
+            <div class="stat-sub">{{ np_lbl.text }}</div>
+        {% else %}
+            <div class="stat-sub muted">{{ np_lbl.text }}</div>
+        {% endif %}
+    </div>
+
+    {# Gross margin tile #}
+    <div class="card stat-card">
+        <div class="card-title">Brüt Kâr Marjı</div>
+        <div class="stat-value">
+            {% if gross_margin_pct is not none %}
+                {{ percent_tr(gross_margin_pct) }}
+            {% else %}
+                —
+            {% endif %}
+        </div>
+        {% set gm_lbl = comparison.gross_margin %}
+        {% if gm_lbl.direction == 'up' %}
+            <div class="stat-sub" style="color:var(--success,#2e7d32)">▲ {{ gm_lbl.text }}</div>
+        {% elif gm_lbl.direction == 'down' %}
+            <div class="stat-sub" style="color:var(--danger,#c62828)">▼ {{ gm_lbl.text }}</div>
+        {% elif gm_lbl.direction == 'flat' %}
+            <div class="stat-sub">{{ gm_lbl.text }}</div>
+        {% else %}
+            <div class="stat-sub muted">{{ gm_lbl.text }}</div>
+        {% endif %}
+    </div>
+</div>
+
+{# ---------- Tab section ---------- #}
+<div class="card" style="padding:0">
+    <div style="display:flex;border-bottom:1px solid #e5e7eb">
+        <button class="tab-btn active" onclick="showTab('pl', this)">Gelir Tablosu</button>
+        <button class="tab-btn" onclick="showTab('cash', this)">Nakit Akışı</button>
+        <button class="tab-btn" onclick="showTab('expenses', this)">Gider Analizi</button>
+        <button class="tab-btn" onclick="showTab('arap', this)">Alacak &amp; Borç</button>
+    </div>
+
+    {# Tab 1: Gelir Tablosu #}
+    <div id="tab-pl" class="tab-panel" style="padding:1.25rem">
+        <table class="data">
+            <tbody>
+                <tr>
+                    <td>Hasılat</td>
+                    <td style="text-align:right">{{ money(snapshot.revenue) }}</td>
+                </tr>
+                <tr>
+                    <td>Satılan Malın Maliyeti</td>
+                    <td style="text-align:right">{{ money(snapshot.cogs) }}</td>
+                </tr>
+                <tr>
+                    <td>Brüt Kâr</td>
+                    <td style="text-align:right">{{ money(snapshot.gross_profit) }}</td>
+                </tr>
+                <tr>
+                    <td>Faaliyet Giderleri</td>
+                    <td style="text-align:right">{{ money(snapshot.operating_expenses) }}</td>
+                </tr>
+                <tr style="font-weight:600">
+                    <td>Net Kâr</td>
+                    <td style="text-align:right">{{ money(snapshot.net_profit) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    {# Tab 2: Nakit Akışı #}
+    <div id="tab-cash" class="tab-panel" style="padding:1.25rem;display:none">
+        <table class="data">
+            <tbody>
+                <tr>
+                    <td>Nakit Girişleri</td>
+                    <td style="text-align:right">{{ money(snapshot.cash_inflows) }}</td>
+                </tr>
+                <tr>
+                    <td>Nakit Çıkışları</td>
+                    <td style="text-align:right">{{ money(snapshot.cash_outflows) }}</td>
+                </tr>
+                <tr style="font-weight:600">
+                    <td>Net Değişim</td>
+                    <td style="text-align:right">
+                        {% if cash_net is not none %}{{ money(cash_net) }}{% else %}—{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Dönem Başı Nakit</td>
+                    <td style="text-align:right">{{ money(snapshot.cash_balance_opening) }}</td>
+                </tr>
+                <tr>
+                    <td>Dönem Sonu Nakit</td>
+                    <td style="text-align:right">{{ money(snapshot.cash_balance_closing) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    {# Tab 3: Gider Analizi #}
+    <div id="tab-expenses" class="tab-panel" style="padding:1.25rem;display:none">
+        {% if expense_rows %}
+        <table class="data">
+            <thead>
+                <tr><th>Kategori</th><th style="text-align:right">Tutar</th></tr>
+            </thead>
+            <tbody>
+                {% for cat, amt in expense_rows %}
+                <tr>
+                    <td>{{ cat }}</td>
+                    <td style="text-align:right">{{ money(amt) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="muted">Bu dönem için gider detayı girilmemiş.</p>
+        {% endif %}
+    </div>
+
+    {# Tab 4: Alacak & Borç #}
+    <div id="tab-arap" class="tab-panel" style="padding:1.25rem;display:none">
+        {% if snapshot.ar_total is none and snapshot.ap_total is none %}
+        <p class="muted">Bu dönem için alacak/borç verisi girilmemiş.</p>
+        {% else %}
+        <div class="stats-row">
+            <div class="card stat-card">
+                <div class="card-title">Toplam Alacaklar</div>
+                <div class="stat-value">
+                    {% if snapshot.ar_total is not none %}{{ money(snapshot.ar_total) }}{% else %}—{% endif %}
+                </div>
+                {% if snapshot.ar_total is not none %}
+                <div class="stat-sub">Müşterilerinizden bekleyen tahsilatlar</div>
+                {% endif %}
+            </div>
+            <div class="card stat-card">
+                <div class="card-title">Toplam Borçlar</div>
+                <div class="stat-value">
+                    {% if snapshot.ap_total is not none %}{{ money(snapshot.ap_total) }}{% else %}—{% endif %}
+                </div>
+                {% if snapshot.ap_total is not none %}
+                <div class="stat-sub">Tedarikçilere ödenecek tutarlar</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: var(--text-muted, #6b7280);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+.tab-btn.active {
+    color: var(--brand, #2563eb);
+    border-bottom-color: var(--brand, #2563eb);
+    font-weight: 600;
+}
+</style>
+<script>
+function showTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).style.display = 'block';
+    btn.classList.add('active');
+}
+</script>
+
+{% endif %}
+{% endblock %}

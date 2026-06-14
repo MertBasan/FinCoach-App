@@ -410,6 +410,13 @@ class PeriodSnapshot(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
     )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Phase 4: publish columns
+    published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    published_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
+    )
+    accountant_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -438,4 +445,5 @@ class PeriodSnapshot(Base):
     period: Mapped[AccountingPeriod] = relationship(foreign_keys=[period_id])
     creator: Mapped[User | None] = relationship(foreign_keys=[created_by])
     approver: Mapped[User | None] = relationship(foreign_keys=[approved_by])
+    publisher: Mapped[User | None] = relationship(foreign_keys=[published_by_id])
     source_document: Mapped[Document | None] = relationship(foreign_keys=[source_document_id])

@@ -1,13 +1,15 @@
 from datetime import date
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, HTTPException, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db, set_firm_context
-from app.db.models import Document, ClientMonthlyTask, Client, User
+from app.db.models import Document, ClientMonthlyTask, Client, User, AccountingPeriod, PeriodSnapshot
 from app.auth.dependencies import require_client
+from app.portal.insights import compute_comparison_labels, period_label_tr
 from app.ui.templates import templates
 from app.tasks.workflow import current_period
 
@@ -21,14 +23,12 @@ def client_home(
     db: Session = Depends(get_db),
     user: User = Depends(require_client),
 ):
-    # Client users belong to a firm and a client; we set firm context
     set_firm_context(db, str(user.firm_id))
 
     client = db.get(Client, user.client_id)
     if not client:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Linked client not found")
 
-    # Documents visible to this client
     docs = db.scalars(
         select(Document)
         .where(Document.client_id == user.client_id)
@@ -36,7 +36,6 @@ def client_home(
         .order_by(Document.created_at.desc())
     ).all()
 
-    # Tasks for current period
     tasks = db.scalars(
         select(ClientMonthlyTask)
         .where(ClientMonthlyTask.client_id == user.client_id)
@@ -66,44 +65,108 @@ def client_home(
     )
 
 
-@router.get("/insights", response_class=HTMLResponse)
-def client_insights(
+@router.get("/monthly", response_class=HTMLResponse)
+def portal_monthly(
     request: Request,
+    period_id: UUID | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_client),
 ):
     set_firm_context(db, str(user.firm_id))
+
     client = db.get(Client, user.client_id)
     if not client:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Linked client not found")
 
-    # Pick the most recent period with any approved transactions.
-    from app.db.models import AccountingPeriod, Transaction
-    from app.reporting.engine import compute_pl, compute_cash, compute_kpis
-    from sqlalchemy import select
-
-    latest_period = db.scalar(
-        select(AccountingPeriod)
-        .join(Transaction, Transaction.period_id == AccountingPeriod.id)
-        .where(AccountingPeriod.client_id == user.client_id)
-        .where(Transaction.approval_status == "approved")
-        .group_by(AccountingPeriod.id)
+    # All published snapshots for this client (for month picker)
+    published_snapshots = db.scalars(
+        select(PeriodSnapshot)
+        .where(PeriodSnapshot.client_id == user.client_id)
+        .where(PeriodSnapshot.published.is_(True))
+        .join(AccountingPeriod, AccountingPeriod.id == PeriodSnapshot.period_id)
         .order_by(AccountingPeriod.year.desc(), AccountingPeriod.month.desc())
-        .limit(1)
+    ).all()
+
+    if not published_snapshots:
+        return templates.TemplateResponse(
+            request, "portal/monthly.html",
+            {"user": user, "client": client, "snapshot": None, "published_snapshots": []},
+        )
+
+    # Resolve which snapshot to show
+    if period_id is not None:
+        snapshot = next(
+            (s for s in published_snapshots if s.period_id == period_id), None
+        )
+        if snapshot is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND)
+    else:
+        snapshot = published_snapshots[0]  # most recent (already sorted desc)
+
+    period = db.get(AccountingPeriod, snapshot.period_id)
+
+    # Find immediately prior calendar month's published snapshot
+    if period.month == 1:
+        prior_year, prior_month = period.year - 1, 12
+    else:
+        prior_year, prior_month = period.year, period.month - 1
+
+    prior_snapshot = db.scalar(
+        select(PeriodSnapshot)
+        .join(AccountingPeriod, AccountingPeriod.id == PeriodSnapshot.period_id)
+        .where(PeriodSnapshot.client_id == user.client_id)
+        .where(PeriodSnapshot.published.is_(True))
+        .where(AccountingPeriod.year == prior_year)
+        .where(AccountingPeriod.month == prior_month)
     )
 
-    pl = compute_pl(db, latest_period) if latest_period else None
-    cash = compute_cash(db, latest_period) if latest_period else None
-    kpis = compute_kpis(db, latest_period) if latest_period else None
+    comparison = compute_comparison_labels(snapshot, prior_snapshot)
+
+    # Gross margin value for the current period
+    gross_margin_pct = None
+    try:
+        if snapshot.revenue and float(snapshot.revenue) != 0:
+            gross_margin_pct = float(snapshot.gross_profit) / float(snapshot.revenue) * 100
+    except (TypeError, AttributeError):
+        pass
+
+    # Cash net change
+    cash_net = None
+    try:
+        if snapshot.cash_inflows is not None and snapshot.cash_outflows is not None:
+            cash_net = float(snapshot.cash_inflows) - float(snapshot.cash_outflows)
+    except (TypeError, AttributeError):
+        pass
+
+    # Expense breakdown sorted descending by amount
+    expense_rows = []
+    if snapshot.expense_breakdown:
+        expense_rows = sorted(
+            snapshot.expense_breakdown.items(),
+            key=lambda kv: kv[1],
+            reverse=True,
+        )
 
     return templates.TemplateResponse(
-        request, "portal/insights.html",
+        request, "portal/monthly.html",
         {
-            "user": user, "client": client,
-            "period": latest_period,
-            "pl": pl, "cash": cash, "kpis": kpis,
+            "user": user,
+            "client": client,
+            "snapshot": snapshot,
+            "period": period,
+            "published_snapshots": published_snapshots,
+            "comparison": comparison,
+            "gross_margin_pct": gross_margin_pct,
+            "cash_net": cash_net,
+            "expense_rows": expense_rows,
+            "period_label": period_label_tr(period.year, period.month),
         },
     )
+
+
+@router.get("/insights", response_class=HTMLResponse)
+def client_insights_redirect(request: Request):
+    return RedirectResponse("/portal/monthly", status_code=302)
 
 
 @router.get("/assistant", response_class=HTMLResponse)

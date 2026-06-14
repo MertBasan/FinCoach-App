@@ -28,6 +28,44 @@
 </div>
 {% endif %}
 
+{# ---------- Publish area (Phase 4) ---------- #}
+{% if snapshot and snapshot.approval_status == 'approved' %}
+<div id="publish-area" style="margin-bottom:1rem">
+    {% if snapshot.published %}
+    <span class="badge done" style="font-size:1rem;padding:0.4rem 0.8rem;">Yayınlandı ✓</span>
+    <span class="muted" style="margin-left:0.5rem;font-size:0.85rem">
+        {{ date_tr(snapshot.published_at) }} tarihinde yayınlandı
+    </span>
+    {% else %}
+    <div id="publish-btn-wrap">
+        <button type="button" class="button"
+            onclick="document.getElementById('publish-btn-wrap').style.display='none';
+                     document.getElementById('publish-form-wrap').style.display='block';">
+            Müşteriye Yayınla
+        </button>
+    </div>
+    <div id="publish-form-wrap" style="display:none;margin-top:0.75rem;max-width:560px">
+        <form hx-post="/clients/{{ client.id }}/snapshots/{{ period.id }}/publish"
+              hx-target="#publish-area"
+              hx-swap="outerHTML">
+            <div class="form-group">
+                <label class="form-label">Müşteri notu</label>
+                <textarea class="form-input" name="accountant_note" rows="3">{{ default_publish_note }}</textarea>
+            </div>
+            <div class="row-gap" style="margin-top:0.5rem">
+                <button class="button" type="submit">Yayınla</button>
+                <button type="button" class="button ghost"
+                    onclick="document.getElementById('publish-form-wrap').style.display='none';
+                             document.getElementById('publish-btn-wrap').style.display='block';">
+                    İptal
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
 <form method="post" action="/clients/{{ client.id }}/snapshots/{{ period.id }}">
 
 <div class="cols-2">
@@ -91,7 +129,7 @@
         </div>
     </div>
     <div class="card">
-        <h2>Diğer</h2>
+        <h2>KDV</h2>
         <div style="display:grid;gap:0.5rem;margin-top:0.75rem">
             {% macro oth(label, fname) %}
             <div class="form-group" style="margin-bottom:0">
@@ -101,10 +139,33 @@
                     value="{{ snapshot|attr(fname) if snapshot and snapshot|attr(fname) is not none else '' }}">
             </div>
             {% endmacro %}
-            {{ oth('Alacaklar Toplamı', 'ar_total') }}
-            {{ oth('Borçlar Toplamı', 'ap_total') }}
             {{ oth('KDV Girdi', 'vat_input') }}
             {{ oth('KDV Çıktı', 'vat_output') }}
+        </div>
+    </div>
+</div>
+
+{# ---------- Alacak & Borç section (Phase 4 Step 2) ---------- #}
+<div class="card" style="margin-top:1rem">
+    <h2>Alacak &amp; Borç</h2>
+    <div class="cols-2" style="margin-top:0.75rem;gap:1rem">
+        <div>
+            <div class="form-group" style="margin-bottom:0.25rem">
+                <label class="form-label" style="font-size:0.85rem;font-weight:600">Toplam Alacaklar</label>
+                <p class="muted" style="font-size:0.78rem;margin:0 0 0.35rem">Müşterilerinizin size olan borcu</p>
+                <input class="form-input" name="ar_total" type="text" inputmode="decimal"
+                    placeholder="0,00"
+                    value="{{ snapshot.ar_total if snapshot and snapshot.ar_total is not none else '' }}">
+            </div>
+        </div>
+        <div>
+            <div class="form-group" style="margin-bottom:0.25rem">
+                <label class="form-label" style="font-size:0.85rem;font-weight:600">Toplam Borçlar</label>
+                <p class="muted" style="font-size:0.78rem;margin:0 0 0.35rem">Tedarikçilere olan borcunuz</p>
+                <input class="form-input" name="ap_total" type="text" inputmode="decimal"
+                    placeholder="0,00"
+                    value="{{ snapshot.ap_total if snapshot and snapshot.ap_total is not none else '' }}">
+            </div>
         </div>
     </div>
 </div>

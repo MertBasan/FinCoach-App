@@ -1,5 +1,5 @@
 """
-Turkish demo data seed — Phase 3 edition.
+Turkish demo data seed — Phase 4 edition.
 
 Creates:
   - Mali müşavirlik firma: Aydın Mali Müşavirlik
@@ -9,9 +9,9 @@ Creates:
   - 4 müşteri portal kullanıcısı
   - 1 superuser (admin@fincoach.dev / demo1234)
   - Örnek notlar, belgeler, görevler
-  - Boğaziçi Kahve için 2 dönem onaylı işlem
-  - Anadolu Tekstil için onaylı dönem özeti (snapshot, source='manual')
-  - Örnek denetim günlüğü kayıtları
+  - Boğaziçi Kahve için 2 dönem onaylı işlem + 1 yayınlı dönem özeti
+  - Anadolu Tekstil için onaylı + yayınlı dönem özeti (ar_total=85.000, ap_total=32.000)
+  - Örnek denetim günlüğü kayıtları (yayın eylemleri dahil)
 
 Idempotent: önce mevcut demo verilerini siler, sonra yeniden oluşturur.
 
@@ -125,6 +125,7 @@ def main():
         seed_task_progress(db, firm, ayse, mehmet)
         seed_demo_transactions(db, firm, ayse)
         seed_demo_snapshot(db, firm, ayse)
+        seed_bogazici_published_snapshot(db, firm, ayse)
         seed_adhoc_tasks(db, firm, ayse, mehmet)
         seed_audit_log(db, firm, ayse, mehmet)
         db.commit()
@@ -483,7 +484,12 @@ def seed_demo_transactions(db: Session, firm: AccountingFirm, ayse: User):
 
 
 def seed_demo_snapshot(db: Session, firm: AccountingFirm, ayse: User):
-    """Anadolu Tekstil için geçen ay onaylı dönem özeti (source='manual')."""
+    """Anadolu Tekstil için geçen ay onaylı + yayınlı dönem özeti (source='manual').
+
+    Phase 4: ar_total=85.000, ap_total=32.000, published=True.
+    """
+    from app.locale.format import TR_MONTHS
+
     set_firm_context(db, str(firm.id))
     tekstil = db.scalar(
         select(Client).where(Client.firm_id == firm.id).where(Client.name == "Anadolu Tekstil Ltd. Şti.")
@@ -505,6 +511,9 @@ def seed_demo_snapshot(db: Session, firm: AccountingFirm, ayse: User):
         db.add(period)
         db.flush()
 
+    month_name = TR_MONTHS[m - 1]
+    note = f"Sayın Anadolu Tekstil Ltd. Şti., burada {month_name} ayının istatistiklerini görebilirsiniz."
+
     snap = PeriodSnapshot(
         firm_id=firm.id,
         client_id=tekstil.id,
@@ -514,6 +523,11 @@ def seed_demo_snapshot(db: Session, firm: AccountingFirm, ayse: User):
         created_by=ayse.id,
         approved_by=ayse.id,
         approved_at=datetime.utcnow() - timedelta(days=10),
+        # Phase 4: published
+        published=True,
+        published_at=datetime.utcnow() - timedelta(days=8),
+        published_by_id=ayse.id,
+        accountant_note=note,
         revenue=Decimal("480000.00"),
         cogs=Decimal("280000.00"),
         gross_profit=Decimal("200000.00"),
@@ -523,8 +537,8 @@ def seed_demo_snapshot(db: Session, firm: AccountingFirm, ayse: User):
         cash_balance_closing=Decimal("178000.00"),
         cash_inflows=Decimal("510000.00"),
         cash_outflows=Decimal("452000.00"),
-        ar_total=Decimal("95000.00"),
-        ap_total=Decimal("64000.00"),
+        ar_total=Decimal("85000.00"),   # Phase 4 value
+        ap_total=Decimal("32000.00"),   # Phase 4 value
         vat_input=Decimal("56000.00"),
         vat_output=Decimal("96000.00"),
         expense_breakdown={
@@ -538,7 +552,77 @@ def seed_demo_snapshot(db: Session, firm: AccountingFirm, ayse: User):
     )
     db.add(snap)
     db.flush()
-    print("Dönem özeti yüklendi: Anadolu Tekstil — onaylı manuel özet")
+    print(f"Dönem özeti yüklendi: Anadolu Tekstil — onaylı + yayınlı ({month_name} {y})")
+
+
+def seed_bogazici_published_snapshot(db: Session, firm: AccountingFirm, ayse: User):
+    """Boğaziçi Kahve için geçen ay onaylı + yayınlı dönem özeti.
+
+    Derived from the seeded transaction totals so comparison labels work in demo.
+    """
+    from app.locale.format import TR_MONTHS
+
+    set_firm_context(db, str(firm.id))
+    bogazici = db.scalar(
+        select(Client).where(Client.firm_id == firm.id).where(Client.name == "Boğaziçi Kahve Atölyesi")
+    )
+    if not bogazici:
+        return
+
+    prev_str = previous_period(current_period())
+    py, pm = prev_str.split("-")
+    y, m = int(py), int(pm)
+
+    period = db.scalar(
+        select(AccountingPeriod)
+        .where(AccountingPeriod.client_id == bogazici.id)
+        .where(AccountingPeriod.year == y).where(AccountingPeriod.month == m)
+    )
+    if not period:
+        period = AccountingPeriod(firm_id=firm.id, client_id=bogazici.id, year=y, month=m)
+        db.add(period)
+        db.flush()
+
+    month_name = TR_MONTHS[m - 1]
+    note = f"Sayın Cemil Bey, burada {month_name} ayının istatistiklerini görebilirsiniz."
+
+    snap = PeriodSnapshot(
+        firm_id=firm.id,
+        client_id=bogazici.id,
+        period_id=period.id,
+        source="manual",
+        approval_status="approved",
+        created_by=ayse.id,
+        approved_by=ayse.id,
+        approved_at=datetime.utcnow() - timedelta(days=12),
+        published=True,
+        published_at=datetime.utcnow() - timedelta(days=10),
+        published_by_id=ayse.id,
+        accountant_note=note,
+        revenue=Decimal("180600.50"),
+        cogs=Decimal("31100.00"),
+        gross_profit=Decimal("149500.50"),
+        operating_expenses=Decimal("101990.50"),
+        net_profit=Decimal("47510.00"),
+        cash_balance_opening=Decimal("85000.00"),
+        cash_balance_closing=Decimal("118000.00"),
+        cash_inflows=Decimal("182000.00"),
+        cash_outflows=Decimal("149000.00"),
+        ar_total=Decimal("18500.00"),
+        ap_total=Decimal("9800.00"),
+        expense_breakdown={
+            "Aylık kira": 32000.0,
+            "Personel maaşları": 48000.0,
+            "SGK ödemeleri": 12400.0,
+            "Elektrik ve doğalgaz": 4850.5,
+            "Sosyal medya reklamları": 3500.0,
+            "POS yazılım aboneliği": 1290.0,
+            "Yönetim giderleri": 940.0,
+        },
+    )
+    db.add(snap)
+    db.flush()
+    print(f"Dönem özeti yüklendi: Boğaziçi Kahve — onaylı + yayınlı ({month_name} {y})")
 
 
 def seed_adhoc_tasks(db: Session, firm: AccountingFirm, ayse: User, mehmet: User):
@@ -599,6 +683,27 @@ def seed_audit_log(db: Session, firm: AccountingFirm, ayse: User, mehmet: User):
             action="create_task",
             details={"title": "Nakit akış projeksiyonu hazırla", "client": "Ege Yoga"},
             created_at=now - timedelta(days=1),
+        ),
+        # Phase 4: publish audit log entries
+        AdminAuditLog(
+            firm_id=firm.id, actor_user_id=ayse.id,
+            action="publish_snapshot",
+            details={
+                "client_id": str(CLIENT_SEEDS[1].get("_client_id", "")),
+                "period_label": "Geçen Ay",
+                "note": "Anadolu Tekstil dönem özeti yayınlandı",
+            },
+            created_at=now - timedelta(days=8),
+        ),
+        AdminAuditLog(
+            firm_id=firm.id, actor_user_id=ayse.id,
+            action="publish_snapshot",
+            details={
+                "client_id": str(CLIENT_SEEDS[0].get("_client_id", "")),
+                "period_label": "Geçen Ay",
+                "note": "Boğaziçi Kahve dönem özeti yayınlandı",
+            },
+            created_at=now - timedelta(days=10),
         ),
     ]
     for e in entries:

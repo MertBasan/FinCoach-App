@@ -6,7 +6,7 @@ A snapshot holds aggregated period-level financial data from external
 systems (ETASQL, Logo, Mikro, Netsis) or manual entry. Reports prefer
 an approved snapshot over transaction-computed numbers.
 
-Phase 3 ships manual entry only. Import-from-file is stubbed.
+Phase 3: manual entry. Phase 4: publish flow for SME portal.
 """
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -19,10 +19,11 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.db.models import (
-    User, Client, AccountingPeriod, PeriodSnapshot,
+    User, Client, AccountingPeriod, PeriodSnapshot, AdminAuditLog,
 )
 from app.auth.dependencies import require_accountant
 from app.clients.scope import get_visible_client_or_404
+from app.locale.format import TR_MONTHS
 from app.ui.templates import templates
 
 
@@ -108,6 +109,11 @@ def snapshot_form(
     snapshot = _get_snapshot(db, client_id, period_id)
     expense_rows = list((snapshot.expense_breakdown or {}).items()) if snapshot else []
 
+    default_note = (
+        f"Sayın {client.name}, burada {TR_MONTHS[period.month - 1]} "
+        f"ayının istatistiklerini görebilirsiniz."
+    )
+
     return templates.TemplateResponse(
         request, "snapshots/form.html",
         {
@@ -117,6 +123,7 @@ def snapshot_form(
             "snapshot": snapshot,
             "expense_rows": expense_rows,
             "source_labels": SOURCE_LABELS,
+            "default_publish_note": default_note,
             "error": None,
         },
     )
@@ -225,6 +232,63 @@ def approve_snapshot(
         f"/clients/{client_id}/snapshots",
         status_code=status.HTTP_303_SEE_OTHER,
     )
+
+
+# ---------- Publish snapshot (Phase 4) ----------
+
+@router.post("/{period_id}/publish")
+async def publish_snapshot(
+    client_id: UUID,
+    period_id: UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_accountant),
+):
+    client = get_visible_client_or_404(client_id, user, db)
+    snapshot = _get_snapshot(db, client_id, period_id)
+    if not snapshot:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Dönem özeti bulunamadı")
+
+    if snapshot.approval_status != "approved":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Dönem özeti önce onaylanmalıdır.")
+
+    if snapshot.published:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bu dönem özeti zaten yayınlanmış.")
+
+    form = await request.form()
+    note = form.get("accountant_note", "").strip() or None
+
+    snapshot.published = True
+    snapshot.published_at = datetime.utcnow()
+    snapshot.published_by_id = user.id
+    snapshot.accountant_note = note
+
+    period = db.get(AccountingPeriod, period_id)
+    period_label = f"{TR_MONTHS[period.month - 1]} {period.year}" if period else str(period_id)
+
+    db.add(AdminAuditLog(
+        firm_id=user.firm_id,
+        actor_user_id=user.id,
+        action="publish_snapshot",
+        details={
+            "period_id": str(period_id),
+            "client_id": str(client_id),
+            "period_label": period_label,
+        },
+    ))
+    db.commit()
+
+    # HTMX partial: replace the publish-area div with the published badge
+    published_at_str = snapshot.published_at.strftime("%d.%m.%Y")
+    html = (
+        f'<div id="publish-area">'
+        f'<span class="badge done" style="font-size:1rem;padding:0.4rem 0.8rem;">'
+        f'Yayınlandı ✓</span>'
+        f'<span class="muted" style="margin-left:0.5rem;font-size:0.85rem">'
+        f'{published_at_str} tarihinde yayınlandı</span>'
+        f'</div>'
+    )
+    return HTMLResponse(content=html)
 
 
 # ---------- Import stub ----------
