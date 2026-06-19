@@ -1,15 +1,18 @@
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+import httpx
+from fastapi import APIRouter, Depends, Form, Request, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db import get_db, set_firm_context
 from app.db.models import Document, ClientMonthlyTask, Client, User, AccountingPeriod, PeriodSnapshot
 from app.auth.dependencies import require_client
 from app.portal.insights import compute_comparison_labels, period_label_tr
+from app.assistant.routes import _build_context
 from app.ui.templates import templates
 from app.tasks.workflow import current_period
 
@@ -172,9 +175,68 @@ def client_insights_redirect(request: Request):
 @router.get("/assistant", response_class=HTMLResponse)
 def client_assistant(
     request: Request,
+    db: Session = Depends(get_db),
     user: User = Depends(require_client),
 ):
+    settings = get_settings()
+    client = db.get(Client, user.client_id)
     return templates.TemplateResponse(
         request, "portal/assistant.html",
-        {"user": user},
+        {
+            "user": user,
+            "client": client,
+            "assistant_enabled": bool(settings.n8n_webhook_url),
+        },
+    )
+
+
+@router.post("/assistant/ask", response_class=HTMLResponse)
+async def portal_assistant_ask(
+    request: Request,
+    question: str = Form(..., max_length=500),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_client),
+):
+    settings = get_settings()
+
+    if not settings.n8n_webhook_url:
+        return HTMLResponse(_chat_pair(question, "Asistan şu an kullanılamıyor."))
+
+    if not question.strip():
+        return HTMLResponse(_chat_pair(question, "Lütfen bir soru yazın."))
+
+    client = db.get(Client, user.client_id)
+    if not client:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+
+    context = _build_context(db, client)
+    payload = {
+        "question": question,
+        "client_name": context["client_name"],
+        "period_label": context["period_label"],
+        "snapshot": context["snapshot"],
+        "transactions": context["transactions"],
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as http:
+            resp = await http.post(settings.n8n_webhook_url, json=payload)
+        resp.raise_for_status()
+        data = resp.json()
+        answer = data.get("answer") or data.get("output") or str(data)
+    except Exception:
+        answer = "Asistan şu an kullanılamıyor. Lütfen daha sonra tekrar deneyin."
+
+    return HTMLResponse(_chat_pair(question, answer))
+
+
+def _chat_pair(question: str, answer: str) -> str:
+    import html
+    q = html.escape(question)
+    a = html.escape(answer).replace("\n", "<br>")
+    return (
+        f'<div class="chat-pair">'
+        f'<div class="chat-bubble user">{q}</div>'
+        f'<div class="chat-bubble assistant">{a}</div>'
+        f'</div>'
     )

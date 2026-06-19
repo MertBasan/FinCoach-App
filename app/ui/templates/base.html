@@ -40,6 +40,14 @@
         <a href="/clients" class="navlink {% if request.url.path.startswith('/clients') %}active{% endif %}">
             <span class="icon">🏢</span><span class="label">Müşteriler</span>
         </a>
+        <a href="/transactions" class="navlink {% if request.url.path == '/transactions' %}active{% endif %}" style="position:relative;">
+            <span class="icon">📋</span><span class="label">İşlem İnceleme</span>
+            <span id="pending-badge"
+                hx-get="/transactions/pending-count"
+                hx-trigger="load"
+                hx-swap="innerHTML"
+                style="margin-left:auto;"></span>
+        </a>
         <a href="/tasks" class="navlink {% if request.url.path.startswith('/tasks') %}active{% endif %}">
             <span class="icon">✅</span><span class="label">Aylık Görevler</span>
         </a>
@@ -82,7 +90,7 @@
             <span class="icon">📈</span><span class="label">İstatistikler</span>
         </a>
         <a href="/portal/assistant" class="navlink {% if request.url.path == '/portal/assistant' %}active{% endif %}">
-            <span class="icon">💬</span><span class="label">AI Asistan</span>
+            <span class="icon">💬</span><span class="label">Mali Asistan</span>
         </a>
     </nav>
     <div class="sidebar-footer">

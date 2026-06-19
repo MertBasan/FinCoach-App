@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}İşlem İnceleme — FinCoach{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>İşlem İnceleme</h1>
+</div>
+
+<div class="kpi-row" style="margin-bottom:1.5rem;">
+    <div class="kpi-tile">
+        <div class="kpi-value">{{ total_pending }}</div>
+        <div class="kpi-label">Toplam Bekleyen</div>
+    </div>
+    <div class="kpi-tile">
+        <div class="kpi-value">{{ approved_this_month }}</div>
+        <div class="kpi-label">Onaylı Bu Ay</div>
+    </div>
+    <div class="kpi-tile">
+        <div class="kpi-value">{{ clients_with_pending }}</div>
+        <div class="kpi-label">Bekleyen Müşteri</div>
+    </div>
+</div>
+
+{% if client_cards %}
+<div class="card-list">
+    {% for card in client_cards %}
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;margin-bottom:0.75rem;">
+        <div>
+            <a href="/clients/{{ card.client.id }}/transactions" style="font-weight:600;font-size:1rem;text-decoration:none;color:inherit;">{{ card.client.name }}</a>
+            <div style="font-size:0.8rem;color:#888;margin-top:0.15rem;">{{ card.period_label }}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+            <span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:999px;padding:0.2rem 0.75rem;font-size:0.85rem;font-weight:600;">
+                {{ card.pending_count }} bekliyor
+            </span>
+            <span style="background:#d1e7dd;color:#0a3622;border:1px solid #a3cfbb;border-radius:999px;padding:0.2rem 0.75rem;font-size:0.85rem;font-weight:600;">
+                {{ card.approved_count }} onaylı
+            </span>
+            <a href="/clients/{{ card.client.id }}/transactions" class="btn btn-sm" style="white-space:nowrap;">İncele →</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="text-align:center;padding:3rem 1rem;color:#555;">
+    <div style="font-size:2rem;margin-bottom:0.5rem;">✓</div>
+    <p>Onay bekleyen işlem yok. Tüm işlemler güncel. ✓</p>
+</div>
+{% endif %}
+{% endblock %}

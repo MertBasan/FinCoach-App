@@ -1,41 +1,46 @@
 {% extends "base.html" %}
-{% block title %}AI Asistan · FinCoach{% endblock %}
+{% block title %}Mali Asistan — FinCoach{% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>💬 AI Asistan</h1>
-    <a href="/portal" class="button ghost">← Portal</a>
+    <h1>Mali Asistan</h1>
+    <p style="color:#666;margin-top:0.25rem;">Finansal verileriniz hakkında soru sorun.</p>
 </div>
-<div class="card">
-    <h2>İşletmeniz hakkında soru sorun</h2>
-    <p class="subtitle" style="margin:0.5rem 0 1rem">
-        FinCoach asistanı sade Türkçe ile yanıt verir; yalnızca muhasebecinizin onayladığı rakamları kullanır.
-        Rakam uydurmaz, onaylanmamış konularda spekülasyon yapmaz.
-    </p>
-    <div class="banner warning">
-        <strong>Çok yakında.</strong> AI asistanı, KPI motoru ve onay akışı devreye girince hazır olacak.
-        Şimdilik aşağıda nasıl görüneceğini önizleyebilirsiniz.
-    </div>
 
-    <div style="margin-top:1.5rem;border:1px solid var(--line);border-radius:var(--radius);padding:1rem;background:var(--line-soft)">
-        <div style="margin-bottom:0.75rem">
-            <strong>Siz:</strong> Geçen ayı önceki aya göre nasıl geçirdik?
-        </div>
-        <div>
-            <strong>FinCoach AI:</strong> <em>Muhasebecinizin onayladığı rakamlara göre</em>, hasılat önceki aya kıyasla arttı.
-            En büyük katkı tekrar eden müşteri satışlarından geldi. Giderler büyük ölçüde sabit kaldı.
-            Muhasebeciniz, normalden yüksek bir yazılım abonelik gideri için bir not düşmüş — beklenip beklenmediğini doğrulamakta fayda var.
-        </div>
-        <p class="muted" style="font-size:0.78rem;margin-top:0.75rem">
-            ⚠️ Bu bir önizlemedir. Gerçek yanıtlar sizin onaylı rakamlarınıza dayanacaktır.
-        </p>
+{% if assistant_enabled %}
+<div class="card" style="display:flex;flex-direction:column;height:60vh;min-height:360px;max-width:720px;">
+    <div id="chat-area" style="flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.75rem;">
     </div>
-
-    <h3 style="margin-top:1.5rem">Yakında sorabileceğiniz örnek sorular</h3>
-    <ul style="line-height:1.8;font-size:0.9rem">
-        <li>"Bu çeyrekte nakit akışım nasıl?"</li>
-        <li>"En çok borcu olan müşterim hangisi?"</li>
-        <li>"KDV borcum geçen çeyreğe göre arttı mı?"</li>
-        <li>"Muhasebecim geçen ay için ne not aldı?"</li>
-    </ul>
+    <div style="border-top:1px solid #e5e7eb;padding:0.75rem 1rem;">
+        <form
+            hx-post="/portal/assistant/ask"
+            hx-target="#chat-area"
+            hx-swap="beforeend"
+            hx-on::after-request="this.reset(); document.getElementById('chat-area').scrollTop = 9999;"
+            style="display:flex;gap:0.5rem;"
+        >
+            <input
+                type="text"
+                name="question"
+                placeholder="Sorunuzu yazın... (örn: Bu ay en büyük giderim neydi?)"
+                required
+                maxlength="500"
+                style="flex:1;padding:0.5rem 0.75rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.95rem;"
+            >
+            <button type="submit" class="btn" style="white-space:nowrap;">Sor</button>
+        </form>
+    </div>
 </div>
+
+<style>
+.chat-pair { display: flex; flex-direction: column; gap: 0.4rem; }
+.chat-bubble { max-width: 80%; padding: 0.6rem 0.9rem; border-radius: 12px; font-size: 0.95rem; line-height: 1.5; }
+.chat-bubble.user { align-self: flex-end; background: #dbeafe; color: #1e3a5f; border-bottom-right-radius: 3px; }
+.chat-bubble.assistant { align-self: flex-start; background: #fff; border: 1px solid #e5e7eb; color: #111; border-bottom-left-radius: 3px; }
+</style>
+
+{% else %}
+<div class="card" style="padding:2rem;max-width:480px;color:#666;">
+    <p>Asistan henüz yapılandırılmamış.</p>
+</div>
+{% endif %}
 {% endblock %}

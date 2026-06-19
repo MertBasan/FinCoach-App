@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     environment: str = "development"
 
     anthropic_api_key: str = ""
+    n8n_webhook_url: str = ""  # empty = assistant disabled
 
     @property
     def database_url(self) -> str:

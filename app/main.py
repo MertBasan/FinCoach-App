@@ -17,6 +17,8 @@ from app.dashboard.routes import router as dashboard_router
 from app.transactions.routes import router as transactions_router
 from app.reporting.routes import router as reporting_router
 from app.snapshots.routes import router as snapshots_router
+from app.overview.routes import router as overview_router
+from app.assistant.routes import router as assistant_api_router
 from app.db.models import User
 
 
@@ -40,6 +42,8 @@ app.include_router(services_router)
 app.include_router(transactions_router)
 app.include_router(reporting_router)
 app.include_router(snapshots_router)
+app.include_router(overview_router)
+app.include_router(assistant_api_router)
 app.include_router(portal_router)
 app.include_router(admin_router)
 app.include_router(admin_firm_router)  # Phase 3: firm admin at /manage/*

@@ -29,6 +29,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:-dev_secret_change_me}
       ENVIRONMENT: development
       UPLOAD_DIR: /code/uploaded_files
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
     ports:
       - "8001:8000"
     volumes:
@@ -36,6 +37,7 @@ services:
       - ./alembic:/code/alembic
       - ./alembic.ini:/code/alembic.ini
       - ./scripts:/code/scripts
+      - ./tests:/code/tests
       - uploads:/code/uploaded_files
     command: >
       sh -c "alembic upgrade head &&

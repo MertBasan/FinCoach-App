@@ -10,12 +10,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml /code/
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir -e ".[dev]"
 
 COPY app /code/app
 COPY alembic /code/alembic
 COPY alembic.ini /code/alembic.ini
 COPY scripts /code/scripts
+COPY tests /code/tests
 
 # Where uploaded documents live (mounted volume in docker-compose)
 RUN mkdir -p /code/uploaded_files
